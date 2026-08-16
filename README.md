@@ -3,7 +3,7 @@
 <div align="center">
 
 [![Status](https://img.shields.io/badge/Status-Testing%20Phase-orange.svg?style=for-the-badge)](#-we-want-your-feedback)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg?style=for-the-badge)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](#)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20Zero%20Tracking-blueviolet.svg?style=for-the-badge)](#-privacy--offline-first)
 [![Built with](https://img.shields.io/badge/Built%20with-Jetpack%20Compose-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](#-tech-stack)
@@ -150,9 +150,11 @@ We welcome community contributions, testing feedback, and suggestions! Please se
 
 ---
 
-## 📄 License
+## 📄 License & Legal Notice
 
-This project is open-source and licensed under the [MIT License](./LICENSE) © 2026 Jenil Banavani.
+Copyright © 2026 Jenil Banavani. **All Rights Reserved.**
+
+This repository and its contents are strictly for evaluation and beta testing purposes. Unauthorized commercial use, redistribution, monetization, re-branding, or publishing to app stores is strictly prohibited. See the [LICENSE](./LICENSE) file for complete terms.
 
 ---
 

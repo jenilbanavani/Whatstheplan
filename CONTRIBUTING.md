@@ -50,6 +50,6 @@ When contributing to this project, please adhere to our core product principles:
 
 ---
 
-## 📄 License
-
-By contributing to **What's the Plan?**, you agree that your contributions will be licensed under its [MIT License](./LICENSE).
+## 📄 License & Proprietary Rights
+ 
+All code, assets, and documentation are proprietary and copyrighted by Jenil Banavani. All Rights Reserved. See [LICENSE](./LICENSE).
