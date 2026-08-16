@@ -1,163 +1,204 @@
-# What's the Plan? ☀️
+# What's the Plan?
 
-<div align="center">
-
-[![Status](https://img.shields.io/badge/Status-Testing%20Phase-orange.svg?style=for-the-badge)](#-we-want-your-feedback)
-[![License: Proprietary](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg?style=for-the-badge)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](#)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20Zero%20Tracking-blueviolet.svg?style=for-the-badge)](#-privacy--offline-first)
-[![Built with](https://img.shields.io/badge/Built%20with-Jetpack%20Compose-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](#-tech-stack)
-
-<br />
-
-**A quiet, thoughtful digital-wellbeing companion that transforms your relationship with your phone.**
+A quiet, offline-first Android digital-wellbeing companion designed to help you stay aware of what you intend to do during the day before phone use becomes unconscious.
 
 > *"Before you use your phone, decide what you're going to use it for."*
 
-<br />
+---
 
-[📥 Download Latest APK (v1.0.0-beta)](#-how-to-install--test) • [💬 Share Feedback / Suggest Ideas](https://github.com/issues) • [🐛 Report a Bug](https://github.com/issues)
+## Why This Exists
 
-</div>
+Most screen-time and wellbeing applications focus on restriction: blocking apps, setting hard time limits, and sending negative alerts after hours of mindless scrolling have already happened.
+
+**What's the Plan?** approaches digital wellbeing through **proactive awareness rather than punishment**:
+
+- **Decide First**: Set a brief intention for the day before phone notifications pull your attention in a dozen directions.
+- **Gentle Check-Ins**: Periodic, sub-5-second prompts ask *"What are you doing right now?"* to foster self-awareness without judgment.
+- **Reflect & Close the Loop**: Evening reflection lets you rate your follow-through and mood in a few taps.
+- **100% Private**: Your daily thoughts, activities, and screen habits stay on your personal device.
 
 ---
 
-## 🌟 Why "What's the Plan?"
+## Features
 
-Most screen-time apps treat you like a child—locking apps, showing scary red warnings, or making you feel guilty. 
+### Current Features (Implemented & Functional)
+- **☀️ Morning Planning Flow**: Set a daily intention with custom text or quick intention chips (`Study`, `Deep Work`, `Exercise`, `Build`, `Relax`).
+- **☀️ First-Unlock Detection**: Detects your first morning phone unlock (`ACTION_USER_PRESENT`) to prompt intention setting at the right moment.
+- **⚡ 5-Second Activity Check-Ins**: Fast 2-column pastel bento grid to log activities (`Study`, `Work`, `Building`, `Scrolling`, `Gaming`, `Watching`, `Break`, `Outside`, `Other`) with optional quick notes.
+- **⚡ Notification Actions**: Log activities directly from the notification shade without unlocking or opening the app.
+- **⚡ Android Quick Settings Tile**: "Check In" tile accessible from the status bar pull-down.
+- **🌙 Evening Reflection**: End-of-day reflection recording mood, plan follow-through status (`Yes`, `Partially`, `No`), and notes.
+- **📊 Visual Insights & Charts**:
+  - 7-day interactive **Weekly Check-Ins** bar chart.
+  - Proportional **Activity Breakdown** distribution bar.
+  - 7-day **Plan Follow-Through** streak capsule tracker.
+  - 7-day **Screen Time Trend** chart (on-device).
+- **📖 History Journal**: Chronological visual feed of past days with expandable logs, timestamps, and notes.
+- **📱 Home-Screen Widgets**:
+  - *Today's Plan Widget (2x2)*: Active plan and check-in count.
+  - *Quick Check-In Widget (2x1)*: One-tap check-in launcher.
+  - *Daily Snapshot Widget (3x2)*: Plan summary, status, check-in count, and screen time.
+- **🔕 Focus Mode**: Quick-pause check-in reminders for 30m, 1h, 2h, or 4h during deep work.
+- **⏱️ Flexible Background Scheduling**:
+  - Battery-friendly WorkManager periodic reminders.
+  - Strict / Exact alarms option via `AlarmManager.setExactAndAllowWhileIdle()`.
+- **💡 Offline Fun Facts**: Delightful educational trivia displayed after logging plans or check-ins (with repetition prevention).
+- **🎨 Modern Design System**: Deep indigo & luminous lavender dark theme, warm off-white light theme, and pastel category accents.
+- **💾 Local Data Backup & Restore**: Export and import complete offline database state via JSON files.
 
-**What's the Plan?** takes a fundamentally different approach rooted in **intentionality and gentle self-awareness**:
+### Experimental / In-Development Features
+- **Strict Alarm Mode**: Android 12+ exact alarm scheduling fine-tuning for aggressive OEM battery savers.
+- **Dynamic Lockscreen Tile Integration**: Testing quick tile behavior across various Android OEM skins (OneUI, MIUI, OxygenOS).
 
-1. **☀️ Morning Intention**: Before your morning starts pulling you into mindless scrolling, set a single clear intention for your day.
-2. **👋 Periodic Check-In**: Quick, gentle prompts during your active hours: *"What are you doing right now?"* Answer in under 5 seconds with zero friction.
-3. **🌙 Evening Reflection**: Close the loop on your day. Rate your follow-through and mood with calm simplicity.
-4. **📊 Visual Insights**: Understand your patterns through elegant, local charts—not sterile corporate spreadsheets.
-5. **🔒 100% Offline & Private**: Zero accounts, zero ads, zero analytics, zero external network requests. Your data never leaves your device.
-
----
-
-## 📸 Key Features
-
-<table>
-  <tr>
-    <td width="50%">
-      <h3>☀️ Morning Planning Flow</h3>
-      <ul>
-        <li><b>First-Unlock Detection</b>: Prompts you naturally on your first phone interaction of the morning.</li>
-        <li><b>Intention Chips</b>: Fast selection (<code>Study</code>, <code>Deep Work</code>, <code>Exercise</code>, <code>Build</code>, <code>Relax</code>).</li>
-        <li><b>Calm Rewards</b>: Delightful offline fun facts after setting your plan.</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>⚡ 5-Second Check-Ins</h3>
-      <ul>
-        <li><b>Pastel Bento Grid</b>: Rapid 1-tap logging across 8 core activity categories.</li>
-        <li><b>Lockscreen Actions</b>: Log directly from your notification shade or Quick Settings tile without unlocking.</li>
-        <li><b>Focus Mode</b>: Quick-pause check-ins for 30m, 1h, 2h, or 4h during deep work.</li>
-      </ul>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h3>📊 Visual Graphs & Insights</h3>
-      <ul>
-        <li><b>Weekly Check-Ins</b>: 7-day interactive bar graph with current day highlighted.</li>
-        <li><b>Activity Breakdown</b>: Proportional color-coded category distribution.</li>
-        <li><b>Plan Follow-Through Tracker</b>: 7-day capsule streak.</li>
-        <li><b>Screen Time Trend</b>: 7-day on-device screen duration trend.</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>📱 Home-Screen Widgets</h3>
-      <ul>
-        <li><b>Today's Plan Widget (2x2)</b>: Your active plan & check-in count at a glance.</li>
-        <li><b>Quick Check-In Widget (2x1)</b>: 1-tap direct launcher.</li>
-        <li><b>Daily Snapshot Widget (3x2)</b>: Plan, check-ins, and screen time summary.</li>
-      </ul>
-    </td>
-  </tr>
-</table>
+### Planned Features
+- [ ] Multi-week historical trend analysis (30-day and 90-day views).
+- [ ] Customizable activity categories and emoji tags.
+- [ ] Material You dynamic color theming (Android 12+ monet palette support).
+- [ ] Configurable evening reflection notification sound and schedule windows.
 
 ---
 
-## 🧪 WE WANT YOUR FEEDBACK! (Testing Phase)
+## Screenshots / Demo
 
-We are currently in an active **Beta Testing Phase** and refining the app before our public Google Play release. Your thoughts and experiences directly shape the product!
-
-### 🎯 What We'd Love to Hear From You:
-- **Tone & Feel**: Does the app feel calm and encouraging? Or does any part feel annoying or demanding?
-- **Notification Timing**: Do check-ins arrive at natural times? Does the morning prompt catch you at the right moment?
-- **Speed & Usability**: Can you complete a check-in within 5 seconds?
-- **Visuals & Aesthetic**: How does the dark/light theme look on your device screen?
-- **Battery & Reliability**: Are check-in reminders delivered reliably on your phone brand (Samsung, Xiaomi, Pixel, OnePlus)?
-
-### 💬 How to Share Feedback:
-1. **GitHub Issues**: Open a [New Feedback Issue](https://github.com/issues/new?template=feedback.md) or [Bug Report](https://github.com/issues/new?template=bug_report.md).
-2. **GitHub Discussions**: Join our discussions tab to share screenshots and ideas.
+<!-- Add screenshots here -->
+| Home / Today Dashboard | Morning Intention Flow | Quick Check-In | Visual Insights |
+|:---:|:---:|:---:|:---:|
+| *<!-- Screenshot 1 Placeholder -->* | *<!-- Screenshot 2 Placeholder -->* | *<!-- Screenshot 3 Placeholder -->* | *<!-- Screenshot 4 Placeholder -->* |
 
 ---
 
-## 📲 How to Install & Test
+## Download
 
-### Option 1: Direct Download (APK)
-1. Download the signed **[`WhatsThePlan-release.apk`](./WhatsThePlan-release.apk)** from this repository.
-2. Open the file on your Android device and select **Install** *(Enable "Install from unknown sources" if prompted)*.
+Pre-built signed release APKs are provided via GitHub Releases:
 
-### Option 2: ADB (Over USB)
+> **[Download the latest APK](../../releases/latest)**
+
+*Note: Only install APK binaries published officially under this repository's Releases page.*
+
+---
+
+## Permissions & Privacy
+
+Privacy is a core design requirement of this application. **The app requests zero network permissions.**
+
+### Requested Android Permissions
+| Permission | Type | Why It Is Needed | Required / Optional |
+|---|---|---|---|
+| `POST_NOTIFICATIONS` | Runtime | To send morning planning reminders, periodic check-in prompts, and evening reflections on Android 13+ (API 33+). | **Optional** (App functions without notifications) |
+| `PACKAGE_USAGE_STATS` | Special AppOps | To calculate on-device screen time duration and top foreground apps for personal awareness charts. | **Optional** (Screen time charts hide gracefully if denied) |
+| `RECEIVE_BOOT_COMPLETED` | Normal | To reschedule WorkManager background workers and restore alarm schedules after the device restarts. | **Required for background reminders** |
+| `BIND_QUICK_SETTINGS_TILE` | System Service | To provide the optional "Check In" Quick Settings tile in the notification shade. | **Optional** |
+
+### Data Storage & Network Audit
+- **Internet Access**: `android.permission.INTERNET` is **NOT** present in `AndroidManifest.xml`. The app cannot connect to the internet, send telemetry, or transmit data off the device.
+- **Local Storage**: Data is stored locally in SQLite using Android Room (`whatstheplan.db`) and encrypted preferences via Jetpack DataStore (`user_settings`).
+- **Analytics & Third-Party SDKs**: Zero third-party analytics SDKs, trackers, crash reporters, or advertising networks are included.
+
+### Privacy Policy
+`TODO: Add a complete privacy policy before public distribution on the Google Play Store.`
+
+---
+
+## Development & Build Setup
+
+### Prerequisites
+- **Android Studio**: Koala (2024.1) or newer recommended
+- **Java Development Kit (JDK)**: JDK 17
+- **Android SDK**:
+  - `compileSdk`: 35 (Android 15)
+  - `targetSdk`: 35
+  - `minSdk`: 26 (Android 8.0 Oreo)
+  - Build-Tools: 34.0.0 or 35.0.0
+
+### Building from Command Line
 ```bash
-adb install -r WhatsThePlan-release.apk
+# Clone the repository
+git clone https://github.com/jenilbanavani/whatstheplan.git
+cd whatstheplan
+
+# Run unit test suite
+./gradlew test
+
+# Assemble debug build
+./gradlew assembleDebug
+# Output: app/build/outputs/apk/debug/app-debug.apk
+
+# Assemble signed release build
+./gradlew assembleRelease
+# Output: app/build/outputs/apk/release/app-release.apk
+```
+
+### Installing on Device via ADB
+```bash
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 ---
 
-## 🔒 Privacy & Offline-First
-
-We believe digital-wellbeing apps shouldn't harvest your data to tell you you're using your phone too much.
+## Project Structure
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                   YOUR ANDROID DEVICE                    │
-│                                                          │
-│   [ UI (Compose) ]  ──>  [ Local Room Database ]         │
-│   [ Notifications]  ──>  [ DataStore Preferences ]       │
-│                                                          │
-│                  ❌ NO INTERNET PERMISSION               │
-│                  ❌ NO EXTERNAL SERVERS                  │
-│                  ❌ NO TRACKERS / ANALYTICS              │
-└──────────────────────────────────────────────────────────┘
+WhatsThePlan/
+├── app/
+│   ├── src/main/
+│   │   ├── AndroidManifest.xml          # Permissions, components, receivers & widgets
+│   │   ├── java/com/example/whatstheplan/
+│   │   │   ├── MainActivity.kt          # Single-activity navigation container
+│   │   │   ├── WhatsThePlanApplication.kt # Application lifecycle & scheduler init
+│   │   │   ├── AppContainer.kt          # Manual Dependency Injection container
+│   │   │   ├── data/local/              # Room database, entities, DAOs, repositories & backup
+│   │   │   ├── domain/model/            # Domain models (UserSettings, ActivityType, FunFact)
+│   │   │   ├── notifications/           # WorkManager workers, AlarmScheduler, NotificationHelper
+│   │   │   ├── ui/
+│   │   │   │   ├── components/          # Reusable Compose UI (Bento cards, charts, buttons)
+│   │   │   │   ├── screens/             # TodayScreen, MorningScreen, CheckInScreen, HistoryScreen, etc.
+│   │   │   │   └── theme/               # Color palette (Dark/Light), typography, and shapes
+│   │   │   ├── usage/                   # Android UsageStatsReader
+│   │   │   └── widgets/                 # Android Home-Screen Widget providers & updater
+│   │   └── res/                         # XML layouts, drawables, app widget metadata, strings
+│   └── src/test/                        # JVM Unit tests
+├── build.gradle.kts                     # Root build configuration
+└── settings.gradle.kts                  # Gradle settings & plugin repositories
 ```
 
-- **Zero Network Permissions**: The `android.permission.INTERNET` permission is completely absent from `AndroidManifest.xml`.
-- **Local SQLite Database**: All plans, check-ins, reflections, and metrics are saved on your phone.
-- **Export & Backup**: Full JSON backup and restore supported locally from the Settings screen.
+---
+
+## Roadmap
+
+- [x] Core offline architecture with Room SQLite & DataStore
+- [x] Morning intention setting with first-unlock detection
+- [x] Sub-5-second activity check-ins with notification actions & Quick Settings tile
+- [x] Evening reflection flow with mood ratings and notes
+- [x] Visual charts (weekly check-ins, activity distribution, plan follow-through, screen time)
+- [x] Native Android home-screen widgets (Today's Plan, Quick Check-in, Daily Snapshot)
+- [x] Local JSON backup and restore
+- [x] Deep indigo / luminous lavender design system with dark & light modes
+- [ ] Configurable activity tags and custom categories
+- [ ] Extended 30-day and 90-day historical analytics
+- [ ] Google Play Store initial beta release
 
 ---
 
-## 🛠 Tech Stack
+## Known Limitations
 
-- **Language**: Kotlin 2.0
-- **UI Framework**: Jetpack Compose (Material 3 with custom Design System)
-- **Local Persistence**: Room SQLite Database + Jetpack DataStore Preferences
-- **Background Scheduling**: WorkManager + AlarmManager Exact Alarms (Doze-safe)
-- **Telemetry**: Android `UsageStatsManager` (100% on-device)
-- **Architecture**: Clean MVVM with Repository Pattern, Kotlin Coroutines, and Reactive StateFlow
+1. **OEM Battery Optimization**: On certain Android devices (Samsung OneUI, Xiaomi MIUI, OnePlus OxygenOS), aggressive background task killing may delay WorkManager check-in reminders unless battery optimizations are disabled in Settings.
+2. **Force-Stop State**: If the app is force-stopped via Android system settings, the OS places the app in a stopped state, pausing WorkManager jobs until the app is opened again by the user (standard Android platform behavior).
+3. **Usage Access**: Screen time statistics require the user to manually grant Usage Access in Android Settings (`Settings.ACTION_USAGE_ACCESS_SETTINGS`).
 
 ---
 
-## 🤝 Contributing
- 
-We welcome community contributions, testing feedback, and suggestions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details on setting up your local development environment.
+## Contributing
+
+We welcome community feedback, issue reports, and pull requests! Please review our [CONTRIBUTING.md](./CONTRIBUTING.md) guide before submitting changes.
 
 ---
 
-## 📄 License & Legal Notice
+## Support / Contact
 
-Copyright © 2026 Jenil Banavani. **All Rights Reserved.**
-
-This repository and its contents are strictly for evaluation and beta testing purposes. Unauthorized commercial use, redistribution, monetization, re-branding, or publishing to app stores is strictly prohibited. See the [LICENSE](./LICENSE) file for complete terms.
+For bug reports, feature suggestions, or general questions, please open an issue in the [GitHub Issues](https://github.com/jenilbanavani/whatstheplan/issues) tab.
 
 ---
 
-<div align="center">
-  <sub>Built with care for intentional living. If you find this project helpful, please consider starring ⭐ the repository!</sub>
-</div>
+## License
+
+This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See the [LICENSE](./LICENSE) file for details.

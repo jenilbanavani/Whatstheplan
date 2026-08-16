@@ -1,55 +1,91 @@
-# Contributing to What's the Plan? ☀️
+# Contributing to What's the Plan?
 
-Thank you for your interest in helping improve **What's the Plan?**! We are currently in our **Beta Testing Phase** and are actively looking for feedback, testing on different Android devices, and code contributions.
-
----
-
-## 🧪 How You Can Help
-
-### 1. Test the App & Provide Feedback
-- Install the latest [`WhatsThePlan-release.apk`](./WhatsThePlan-release.apk) on your personal device.
-- Use it for a few days during your daily routine.
-- Submit feedback via [GitHub Issues](https://github.com/issues) using the Feedback template.
-
-### 2. Report Bugs
-If you run into any crashes, missing notifications on specific OEM skins (MIUI, OneUI, ColorOS), or layout glitches, please file a [Bug Report](https://github.com/issues).
+Thank you for your interest in contributing to **What's the Plan?**! We appreciate community involvement in testing, refining, and extending this project.
 
 ---
 
-## 💻 Local Development Setup
+## 📋 Before Contributing
 
-### Prerequisites
-- **Android Studio** (Koala / Ladybug or newer)
-- **JDK 17**
-- **Android SDK Platform 35** and **Build-Tools 34+**
+1. **Read the [README.md](./README.md)** to understand the application's design principles and offline-first architecture.
+2. **Check [Existing Issues](https://github.com/jenilbanavani/whatstheplan/issues)** to see if your bug or feature request has already been reported.
+3. **Discuss Major Changes**: For significant architectural changes, new database tables, or workflow overhauls, please open an issue for discussion first before writing extensive code.
 
-### Building from Source
+---
+
+## 🐛 Reporting Bugs
+
+When submitting a bug report, please include:
+- **Device Model**: (e.g., Google Pixel 8, Samsung Galaxy S23)
+- **Android Version**: (e.g., Android 14, OneUI 6.0)
+- **App Version / Commit**: (e.g., v1.0.0 or commit SHA)
+- **Steps to Reproduce**: Clear numbered steps.
+- **Expected Behavior**: What you expected to happen.
+- **Actual Behavior**: What actually happened.
+- **Logs / Screenshots**: Include relevant logcat snippets if available.
+  > ⚠️ **Important**: Remove any sensitive personal details, file paths, or private information from logs before posting.
+
+---
+
+## 💡 Proposing Feature Requests
+
+When requesting a feature, please explain:
+- **The Problem**: What limitation or friction are you experiencing?
+- **Proposed Solution**: How should the app handle it?
+- **Why It Matters**: How does this align with the calm, offline-first mission of the app?
+
+---
+
+## 💻 Development & Pull Request Workflow
+
+### 1. Fork & Clone
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/WhatsThePlan.git
-cd WhatsThePlan
+# Fork the repository on GitHub, then clone your fork:
+git clone https://github.com/YOUR_USERNAME/whatstheplan.git
+cd whatstheplan
 
-# Run unit tests
-./gradlew test
-
-# Assemble debug APK
-./gradlew assembleDebug
-
-# Assemble signed release APK
-./gradlew assembleRelease
+# Add the upstream remote:
+git remote add upstream https://github.com/jenilbanavani/whatstheplan.git
 ```
 
+### 2. Create a Branch
+```bash
+git checkout -b feature/your-feature-name
+```
+
+### 3. Make Changes & Test Locally
+- Follow modern Android & Jetpack Compose best practices.
+- Ensure all existing unit tests pass before submitting:
+  ```bash
+  ./gradlew test
+  ```
+- Verify debug and release builds assemble cleanly:
+  ```bash
+  ./gradlew assembleDebug
+  ```
+
+### 4. Commit & Push
+```bash
+git commit -m "feat: describe your change cleanly"
+git push origin feature/your-feature-name
+```
+
+### 5. Open a Pull Request
+- Provide a clear summary of what was changed and why.
+- Reference any related issues (e.g., `Fixes #12`).
+- Keep PRs focused on a single topic (avoid mixing unrelated refactoring).
+- Ensure no accidental secrets, local properties, or temporary build files are included.
+
 ---
 
-## 🔒 Core Architecture Rules
+## 🔒 Core Architecture Guidelines
 
-When contributing to this project, please adhere to our core product principles:
-1. **100% Offline-First**: Zero external networking, analytics, or cloud dependencies. The app must never require `android.permission.INTERNET`.
-2. **Intentional & Calm**: Avoid aggressive nag screens, intrusive badges, or guilt-inducing copy.
-3. **Speed & Ergonomics**: Check-ins must remain sub-5-second interactions with minimal user friction.
+All contributions must adhere to these foundational rules:
+1. **100% Offline-First**: No network permissions (`android.permission.INTERNET`) may be introduced. All user data, metrics, and insights must remain strictly on-device.
+2. **Calm & Non-Intrusive**: Avoid aggressive badges, guilt-inducing notifications, or coercive design patterns.
+3. **Ergonomic Speed**: Daytime check-in interactions must remain fast (< 5 seconds).
 
 ---
 
-## 📄 License & Proprietary Rights
- 
-All code, assets, and documentation are proprietary and copyrighted by Jenil Banavani. All Rights Reserved. See [LICENSE](./LICENSE).
+## 📄 License Notice
+
+By contributing to **What's the Plan?**, you agree that your contributions will be licensed under the project's [Mozilla Public License 2.0](./LICENSE).
