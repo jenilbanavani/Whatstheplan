@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">What\'s the Plan?</string>
+    <string name="widget_today_plan_desc">Displays today\'s active plan and check-in count.</string>
+    <string name="widget_quick_checkin_desc">One-tap launcher to quickly log what you\'re doing.</string>
+    <string name="widget_daily_snapshot_desc">Daily overview of your plan, check-ins, and screen time.</string>
+    <string name="tile_quick_check_in">Check In</string>
+</resources>
