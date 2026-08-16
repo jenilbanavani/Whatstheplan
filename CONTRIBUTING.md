@@ -47,3 +47,9 @@ When contributing to this project, please adhere to our core product principles:
 1. **100% Offline-First**: Zero external networking, analytics, or cloud dependencies. The app must never require `android.permission.INTERNET`.
 2. **Intentional & Calm**: Avoid aggressive nag screens, intrusive badges, or guilt-inducing copy.
 3. **Speed & Ergonomics**: Check-ins must remain sub-5-second interactions with minimal user friction.
+
+---
+
+## 📄 License
+
+By contributing to **What's the Plan?**, you agree that your contributions will be licensed under its [MIT License](./LICENSE).

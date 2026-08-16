@@ -3,6 +3,7 @@
 <div align="center">
 
 [![Status](https://img.shields.io/badge/Status-Testing%20Phase-orange.svg?style=for-the-badge)](#-we-want-your-feedback)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](#)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20Zero%20Tracking-blueviolet.svg?style=for-the-badge)](#-privacy--offline-first)
 [![Built with](https://img.shields.io/badge/Built%20with-Jetpack%20Compose-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](#-tech-stack)
@@ -144,8 +145,14 @@ We believe digital-wellbeing apps shouldn't harvest your data to tell you you're
 ---
 
 ## 🤝 Contributing
-
+ 
 We welcome community contributions, testing feedback, and suggestions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details on setting up your local development environment.
+
+---
+
+## 📄 License
+
+This project is open-source and licensed under the [MIT License](./LICENSE) © 2026 Jenil Banavani.
 
 ---
 
