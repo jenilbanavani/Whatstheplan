@@ -57,32 +57,31 @@ fun ReflectionScreen(
     val settings by container.settingsRepository.settingsFlow.collectAsStateWithLifecycle(UserSettings())
 
     val scope = rememberCoroutineScope()
-    var completionStatus by remember { mutableStateOf("Done") }
-    var mood by remember { mutableStateOf("🙂 Good") }
+    var outcome by remember { mutableStateOf("Done") }
     var note by remember { mutableStateOf("") }
 
-    val statuses = listOf(
-        "Done" to "✓ Accomplished intention",
-        "Moved" to "➡️ Shifted to later",
-        "Dropped" to "🛑 Consciously dropped",
+    val outcomes = listOf(
+        "Done" to "✓ Done",
+        "Move to tomorrow" to "➡️ Move to tomorrow",
+        "Make it smaller" to "🤏 Make it smaller",
+        "Drop it" to "🛑 Drop it",
     )
-    val moods = listOf("🌿 Calm", "🙂 Good", "⚡ Productive", "😴 Tired", "🌊 Busy")
 
     val tone = settings.tonePreference
-    val prompt = tone.eveningPrompt()
+    val intentionText = todayPlan?.text.orEmpty()
+    val prompt = tone.eveningPrompt(intentionText)
 
     LaunchedEffect(existing?.id) {
         existing?.let {
-            mood = it.mood
-            completionStatus = it.completion
+            outcome = it.completion
             note = it.note
         } ?: run {
             todayPlan?.let {
                 when (it.status) {
-                    "DONE" -> completionStatus = "Done"
-                    "MOVED" -> completionStatus = "Moved"
-                    "DROPPED" -> completionStatus = "Dropped"
-                    else -> completionStatus = "Done"
+                    "DONE" -> outcome = "Done"
+                    "MOVED" -> outcome = "Move to tomorrow"
+                    "DROPPED" -> outcome = "Drop it"
+                    else -> outcome = "Done"
                 }
             }
         }
@@ -114,13 +113,13 @@ fun ReflectionScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "Evening Recovery",
+                text = "Evening Reflection",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = "Close out today peacefully",
+                text = "Close out today",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -148,7 +147,7 @@ fun ReflectionScreen(
             }
         }
 
-        // Status: Done, Moved, or Dropped
+        // Recovery Actions: Done, Move to tomorrow, Make it smaller, Drop it
         Text(
             text = "Outcome",
             style = MaterialTheme.typography.titleSmall,
@@ -158,10 +157,10 @@ fun ReflectionScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            statuses.forEach { (statusKey, label) ->
+            outcomes.forEach { (key, label) ->
                 FilterChip(
-                    selected = completionStatus == statusKey,
-                    onClick = { completionStatus = statusKey },
+                    selected = outcome == key,
+                    onClick = { outcome = key },
                     label = { Text(label, style = MaterialTheme.typography.bodyMedium) },
                     shape = RoundedCornerShape(100.dp),
                     colors = FilterChipDefaults.filterChipColors(
@@ -173,37 +172,18 @@ fun ReflectionScreen(
             }
         }
 
-        // Tone feedback on outcome
+        // Low-guilt recovery guidance
         Text(
-            text = tone.statusFeedback(completionStatus.uppercase()),
+            text = when (outcome) {
+                "Done" -> "Great follow-through today."
+                "Move to tomorrow" -> "Priorities adjust naturally. Tomorrow is a fresh start."
+                "Make it smaller" -> "Shrinking an intention makes starting frictionless next time."
+                "Drop it" -> "Consciously letting go leaves mental space for what matters."
+                else -> ""
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
-        // Mood
-        Text(
-            text = "How did you feel overall?",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            moods.forEach { item ->
-                FilterChip(
-                    selected = mood == item,
-                    onClick = { mood = item },
-                    label = { Text(item, style = MaterialTheme.typography.bodyMedium) },
-                    shape = RoundedCornerShape(100.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    ),
-                )
-            }
-        }
 
         // Optional Closing Note
         OutlinedTextField(
@@ -211,7 +191,7 @@ fun ReflectionScreen(
             onValueChange = { note = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Closing note (optional)") },
-            placeholder = { Text("What did you learn today? What's for tomorrow?") },
+            placeholder = { Text("What did you notice today?") },
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -221,21 +201,27 @@ fun ReflectionScreen(
         )
 
         PrimaryGlowButton(
-            text = "Complete Evening Recovery",
+            text = "Save Reflection",
             icon = Icons.Default.Check,
             onClick = {
                 scope.launch {
-                    val dbStatus = when (completionStatus) {
+                    val dbStatus = when (outcome) {
                         "Done" -> "DONE"
-                        "Moved" -> "MOVED"
-                        "Dropped" -> "DROPPED"
+                        "Move to tomorrow" -> "MOVED"
+                        "Make it smaller" -> "ACTIVE"
+                        "Drop it" -> "DROPPED"
                         else -> "DONE"
                     }
-                    container.dailyReflectionRepository.saveReflection(mood, completionStatus, note)
+                    container.dailyReflectionRepository.saveReflection(
+                        mood = outcome,
+                        completion = outcome,
+                        note = note,
+                    )
                     container.dailyPlanRepository.updateStatus(dbStatus)
                     container.userCorrectionRepository.addCorrection(
                         category = "RECOVERY",
-                        note = "Evening recovery completed: $completionStatus. Mood: $mood. Note: $note",
+                        note = "Evening recovery: $outcome. Note: $note",
+                        source = "LEARNED",
                     )
                     onDone()
                 }

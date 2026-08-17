@@ -9,8 +9,17 @@ class UserCorrectionRepository(private val dao: UserCorrectionDao) {
 
     suspend fun getAll(): List<UserCorrectionEntity> = dao.getAll()
 
-    suspend fun addCorrection(category: String, note: String): Long =
-        dao.insert(UserCorrectionEntity(category = category, note = note.trim()))
+    suspend fun addCorrection(
+        category: String,
+        note: String,
+        source: String = "USER",
+    ): Long = dao.insert(
+        UserCorrectionEntity(
+            category = category,
+            note = note.trim(),
+            source = source,
+        ),
+    )
 
     suspend fun updateCorrection(correction: UserCorrectionEntity) =
         dao.update(correction)

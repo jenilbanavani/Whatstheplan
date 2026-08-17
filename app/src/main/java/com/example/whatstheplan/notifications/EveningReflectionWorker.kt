@@ -19,7 +19,7 @@ class EveningReflectionWorker(
             ?: SettingsRepository(applicationContext).settingsFlow.first()
 
         val today = DateUtils.todayString()
-        if (!settings.setupComplete || settings.pausedTodayDate == today) {
+        if (!settings.setupComplete || !settings.eveningReflectionEnabled || settings.pausedTodayDate == today) {
             return Result.success()
         }
 

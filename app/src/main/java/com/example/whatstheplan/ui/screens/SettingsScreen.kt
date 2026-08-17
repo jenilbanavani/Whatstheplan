@@ -26,10 +26,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.NightlightRound
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -110,6 +113,54 @@ fun SettingsScreen(
         )
     }
 
+    val sleepTimePickerDialog = remember(settings.sleepTimeMinutes) {
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                scope.launch { container.settingsRepository.setSleepTimeMinutes(hourOfDay * 60 + minute) }
+            },
+            settings.sleepTimeMinutes / 60,
+            settings.sleepTimeMinutes % 60,
+            false,
+        )
+    }
+
+    val quietStartPickerDialog = remember(settings.quietHoursStartMinutes) {
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                scope.launch {
+                    container.settingsRepository.setQuietHours(
+                        hourOfDay * 60 + minute,
+                        settings.quietHoursEndMinutes,
+                    )
+                }
+            },
+            settings.quietHoursStartMinutes / 60,
+            settings.quietHoursStartMinutes % 60,
+            false,
+        )
+    }
+
+    val quietEndPickerDialog = remember(settings.quietHoursEndMinutes) {
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                scope.launch {
+                    container.settingsRepository.setQuietHours(
+                        settings.quietHoursStartMinutes,
+                        hourOfDay * 60 + minute,
+                    )
+                }
+            },
+            settings.quietHoursEndMinutes / 60,
+            settings.quietHoursEndMinutes % 60,
+            false,
+        )
+    }
+
+    val feedbackOptions = listOf("Useful", "Too early", "Too late", "Not relevant", "Too much")
+
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -156,16 +207,16 @@ fun SettingsScreen(
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Fine-tune your companion, tone, and local memory.",
+            text = "Fine-tune companion tone, rhythm, and notification timing.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        // 1. Preferred Tone
+        // 1. Companion Tone
         SectionCard {
             CardTitle("Companion Tone", Icons.Default.ChatBubbleOutline)
             Text(
-                text = "Choose the voice and style of notifications and reflections.",
+                text = "Voice of notifications, intention cards, and reflections.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -199,9 +250,9 @@ fun SettingsScreen(
             }
         }
 
-        // 2. Profile & Schedule
+        // 2. Schedule & Rhythm
         SectionCard {
-            CardTitle("Schedule & Habits", Icons.Default.Schedule)
+            CardTitle("Schedule & Rhythm", Icons.Default.Schedule)
 
             // Name
             Row(
@@ -248,6 +299,27 @@ fun SettingsScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
+            // Sleep Time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Sleep Time", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = DateUtils.formatClock(settings.sleepTimeMinutes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = { sleepTimePickerDialog.show() }) {
+                    Text("Change")
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
             // Daily Commitment
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -271,40 +343,20 @@ fun SettingsScreen(
             }
         }
 
-        // 3. Notification & Quiet Hours Controls
+        // 3. Notification Controls (Morning, Follow-Up, Evening)
         SectionCard {
-            CardTitle("Notifications & Quiet Hours", Icons.Default.Notifications)
+            CardTitle("Notification Controls", Icons.Default.Notifications)
 
+            // Morning Prompt Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Daily Follow-Up Prompts", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = "Morning Check-In", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "Max 1 context-aware follow-up per day",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = settings.checkInsEnabled,
-                    onCheckedChange = { scope.launch { container.settingsRepository.setCheckInsEnabled(it) } },
-                )
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Morning Planning Prompt", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        text = "Remind at wake time",
+                        text = "Prompts for your one intention at wake time",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -317,58 +369,121 @@ fun SettingsScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
+            // Follow-Up Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Notification Sound", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = "Context-Aware Follow-Up", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "Play alert tone",
+                        text = "Max 1 follow-up midday with Start, Move, Not today",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Switch(
-                    checked = settings.notificationSound,
-                    onCheckedChange = { scope.launch { container.settingsRepository.setNotificationSound(it) } },
+                    checked = settings.followUpEnabled,
+                    onCheckedChange = { scope.launch { container.settingsRepository.setFollowUpEnabled(it) } },
                 )
             }
-        }
 
-        // 4. Background Reliability (Battery Optimization)
-        SectionCard {
-            CardTitle("Background Reliability", Icons.Default.BatterySaver)
-            Text(
-                text = "Certain devices aggressively kill background workers. Ensure notifications arrive reliably.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Evening Reflection Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PillBadge(
-                    text = if (isIgnoringBatteryOptimizations) "✓ Optimized (Unrestricted)" else "⚠️ Subject to Battery Optimization",
-                    containerColor = if (isIgnoringBatteryOptimizations) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
-                    contentColor = if (isIgnoringBatteryOptimizations) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Evening Reflection", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Prompts for neutral recovery before sleep time",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = settings.eveningReflectionEnabled,
+                    onCheckedChange = { scope.launch { container.settingsRepository.setEveningReflectionEnabled(it) } },
                 )
-                if (!isIgnoringBatteryOptimizations && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    TextButton(
-                        onClick = {
-                            val intent = android.content.Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                            context.startActivity(intent)
-                        },
-                    ) {
-                        Text("Disable Battery Limits")
-                    }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Quiet Hours
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Quiet Hours", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "${DateUtils.formatClock(settings.quietHoursStartMinutes)} to ${DateUtils.formatClock(settings.quietHoursEndMinutes)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row {
+                    TextButton(onClick = { quietStartPickerDialog.show() }) { Text("Start") }
+                    TextButton(onClick = { quietEndPickerDialog.show() }) { Text("End") }
                 }
             }
         }
 
-        // 5. Local Memory & Data Transparency
+        // 4. Notification Timing Feedback
+        SectionCard {
+            CardTitle("Notification Feedback", Icons.Default.Feedback)
+            Text(
+                text = "Help the companion tune its notification timing for your rhythm:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                feedbackOptions.forEach { feedback ->
+                    val isSelected = settings.notificationFeedback == feedback
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setNotificationFeedback(if (isSelected) "" else feedback)
+                                container.userCorrectionRepository.addCorrection(
+                                    category = "FEEDBACK",
+                                    note = "Notification timing feedback: $feedback",
+                                    source = "LEARNED",
+                                )
+                                Toast.makeText(context, "Feedback recorded locally.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        label = { Text(feedback) },
+                        shape = RoundedCornerShape(100.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        ),
+                    )
+                }
+            }
+        }
+
+        // 5. Future Calendar Integration Note
+        SectionCard {
+            CardTitle("Calendar Integration (Planned)", Icons.Default.CalendarMonth)
+            Text(
+                text = "Optional read-only local calendar sync is architected for a future update. No cloud connection will ever be required.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // 6. Memory & Data Transparency
         SectionCard {
             CardTitle("Memory & Privacy", Icons.Default.Memory)
             Text(
@@ -419,7 +534,7 @@ fun SettingsScreen(
             }
         }
 
-        // 6. Theme Mode
+        // 7. Theme Mode
         SectionCard {
             CardTitle("Appearance", Icons.Default.Palette)
             FlowRow(
@@ -442,7 +557,7 @@ fun SettingsScreen(
             }
         }
 
-        // 7. Reset App Data
+        // 8. Reset App Data
         SectionCard {
             CardTitle("Reset", Icons.Default.RestartAlt)
             Button(
@@ -504,7 +619,7 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = tempCommitment,
                     onValueChange = { tempCommitment = it },
-                    placeholder = { Text("e.g. Work 9 to 5, Classes") },
+                    placeholder = { Text("e.g. Work 9am–5pm, College") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 )

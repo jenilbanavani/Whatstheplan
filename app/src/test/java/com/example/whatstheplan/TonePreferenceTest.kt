@@ -15,8 +15,8 @@ class TonePreferenceTest {
         val directGreeting = TonePreference.DIRECT.morningGreeting("Alex")
         assertTrue(directGreeting.contains("Alex"))
 
-        val playfulGreeting = TonePreference.PLAYFUL.morningGreeting(null)
-        assertFalse(playfulGreeting.contains("null"))
+        val playfulGreeting = TonePreference.PLAYFUL.morningGreeting("Alex")
+        assertTrue(playfulGreeting.contains("Alex"))
     }
 
     @Test
@@ -28,10 +28,20 @@ class TonePreferenceTest {
         assertTrue(directTitle.contains("Priority"))
 
         val playfulTitle = TonePreference.PLAYFUL.followUpTitle()
-        assertTrue(playfulTitle.contains("vibe check"))
+        assertTrue(playfulTitle.contains("Project time"))
 
         val calmBody = TonePreference.CALM.followUpBody("Finish report", "Open document")
         assertTrue(calmBody.contains("Open document"))
+        assertTrue(calmBody.contains("Still realistic?"))
+    }
+
+    @Test
+    fun `test evening prompt neutral recovery in each tone`() {
+        val calmPrompt = TonePreference.CALM.eveningPrompt("Project outline")
+        assertTrue(calmPrompt.contains("Move it, shrink it, or drop it?"))
+
+        val playfulPrompt = TonePreference.PLAYFUL.eveningPrompt("Project outline")
+        assertTrue(playfulPrompt.contains("Move it, shrink it, or drop it?"))
     }
 
     @Test

@@ -28,7 +28,7 @@ import com.example.whatstheplan.data.local.database.entities.UserCorrectionEntit
         ScreenTimeSnapshotEntity::class,
         UserCorrectionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class WhatsThePlanDatabase : RoomDatabase() {
@@ -53,7 +53,13 @@ abstract class WhatsThePlanDatabase : RoomDatabase() {
             }
         }
 
-        private val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_corrections ADD COLUMN source TEXT NOT NULL DEFAULT 'USER'")
+            }
+        }
+
+        private val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         fun getInstance(context: Context): WhatsThePlanDatabase =
             instance ?: synchronized(this) {

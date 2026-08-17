@@ -25,7 +25,7 @@ object BackupManager {
 
     suspend fun exportToJson(container: AppContainer): String = withContext(Dispatchers.IO) {
         val root = JSONObject()
-        root.put("version", 2)
+        root.put("version", 3)
         root.put("exported_at", System.currentTimeMillis())
 
         // 1. Daily Plans
@@ -51,6 +51,7 @@ object BackupManager {
             val obj = JSONObject().apply {
                 put("category", c.category)
                 put("note", c.note)
+                put("source", c.source)
                 put("timestamp", c.timestamp)
             }
             correctionsArray.put(obj)
@@ -91,12 +92,15 @@ object BackupManager {
         val settingsObj = JSONObject().apply {
             put("userName", settings.userName)
             put("wakeTimeMinutes", settings.wakeTimeMinutes)
+            put("sleepTimeMinutes", settings.sleepTimeMinutes)
             put("dailyCommitment", settings.dailyCommitment)
             put("tonePreference", settings.tonePreference.name)
             put("morningReminderEnabled", settings.morningReminderEnabled)
-            put("checkInsEnabled", settings.checkInsEnabled)
+            put("followUpEnabled", settings.followUpEnabled)
+            put("eveningReflectionEnabled", settings.eveningReflectionEnabled)
             put("quietHoursStartMinutes", settings.quietHoursStartMinutes)
             put("quietHoursEndMinutes", settings.quietHoursEndMinutes)
+            put("notificationFeedback", settings.notificationFeedback)
             put("themeMode", settings.themeMode.name)
             put("notificationSound", settings.notificationSound)
         }
@@ -141,6 +145,7 @@ object BackupManager {
                             UserCorrectionEntity(
                                 category = obj.optString("category", "PREFERENCE"),
                                 note = obj.getString("note"),
+                                source = obj.optString("source", "USER"),
                                 timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
                             ),
                         )
@@ -194,13 +199,16 @@ object BackupManager {
                     val repo = container.settingsRepository
                     if (s.has("userName")) repo.setUserName(s.getString("userName"))
                     if (s.has("wakeTimeMinutes")) repo.setWakeTimeMinutes(s.getInt("wakeTimeMinutes"))
+                    if (s.has("sleepTimeMinutes")) repo.setSleepTimeMinutes(s.getInt("sleepTimeMinutes"))
                     if (s.has("dailyCommitment")) repo.setDailyCommitment(s.getString("dailyCommitment"))
                     if (s.has("tonePreference")) {
                         val tone = TonePreference.entries.firstOrNull { it.name == s.getString("tonePreference") } ?: TonePreference.CALM
                         repo.setTonePreference(tone)
                     }
                     if (s.has("morningReminderEnabled")) repo.setMorningReminderEnabled(s.getBoolean("morningReminderEnabled"))
-                    if (s.has("checkInsEnabled")) repo.setCheckInsEnabled(s.getBoolean("checkInsEnabled"))
+                    if (s.has("followUpEnabled")) repo.setFollowUpEnabled(s.getBoolean("followUpEnabled"))
+                    if (s.has("eveningReflectionEnabled")) repo.setEveningReflectionEnabled(s.getBoolean("eveningReflectionEnabled"))
+                    if (s.has("notificationFeedback")) repo.setNotificationFeedback(s.getString("notificationFeedback"))
                     if (s.has("themeMode")) {
                         val mode = ThemeMode.entries.firstOrNull { it.name == s.getString("themeMode") } ?: ThemeMode.SYSTEM
                         repo.setThemeMode(mode)

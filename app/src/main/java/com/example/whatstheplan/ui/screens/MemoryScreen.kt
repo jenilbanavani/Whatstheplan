@@ -22,12 +22,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -57,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whatstheplan.AppContainer
 import com.example.whatstheplan.data.local.BackupManager
-import com.example.whatstheplan.data.local.database.entities.DailyPlanEntity
 import com.example.whatstheplan.data.local.database.entities.UserCorrectionEntity
 import com.example.whatstheplan.domain.model.UserSettings
 import com.example.whatstheplan.ui.components.CardTitle
@@ -75,7 +76,10 @@ fun MemoryScreen(
 
     val settings by container.settingsRepository.settingsFlow.collectAsStateWithLifecycle(UserSettings())
     val plans by container.dailyPlanRepository.observeAll().collectAsStateWithLifecycle(emptyList())
-    val corrections by container.userCorrectionRepository.observeAll().collectAsStateWithLifecycle(emptyList())
+    val allCorrections by container.userCorrectionRepository.observeAll().collectAsStateWithLifecycle(emptyList())
+
+    val userAddedMemory = allCorrections.filter { it.source == "USER" }
+    val learnedMemory = allCorrections.filter { it.source != "USER" }
 
     var showAddCorrectionDialog by remember { mutableStateOf(false) }
     var newCorrectionNote by remember { mutableStateOf("") }
@@ -112,12 +116,12 @@ fun MemoryScreen(
                 }
                 Column {
                     Text(
-                        text = "Local Memory",
+                        text = "What I Remember",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Transparent on-device records & routines.",
+                        text = "Transparent on-device records & rhythm.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -125,7 +129,7 @@ fun MemoryScreen(
             }
         }
 
-        // Privacy Guarantee Card
+        // Privacy Guarantee
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -145,7 +149,7 @@ fun MemoryScreen(
                         modifier = Modifier.size(24.dp),
                     )
                     Text(
-                        text = "No data ever leaves this phone. You have complete control to view, edit, export, or delete everything here.",
+                        text = "Your routines and plans stay on this phone. You can inspect, edit, forget, or export everything.",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -154,21 +158,38 @@ fun MemoryScreen(
             }
         }
 
-        // Active Companion Profile / Preferences Memory
+        // 1. ADDED BY YOU: Your Rhythm & Preferences
         item {
             SectionCard {
-                CardTitle("Remembered Profile", Icons.Default.Psychology)
+                CardTitle("Your Rhythm & Setup", Icons.Default.Person)
+                Text(
+                    text = "Added by you during setup and settings:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MemoryItemRow(label = "Name", value = settings.userName.ifBlank { "Not provided" })
-                    MemoryItemRow(label = "Wake Time", value = DateUtils.formatClock(settings.wakeTimeMinutes))
-                    MemoryItemRow(label = "Fixed Daily Commitment", value = settings.dailyCommitment.ifBlank { "None set" })
-                    MemoryItemRow(label = "Tone Preference", value = "${settings.tonePreference.title} (${settings.tonePreference.description})")
-                    MemoryItemRow(label = "Quiet Hours", value = "${DateUtils.formatClock(settings.quietHoursStartMinutes)} to ${DateUtils.formatClock(settings.quietHoursEndMinutes)}")
+                    MemoryItemRow(label = "Wake time", value = DateUtils.formatClock(settings.wakeTimeMinutes))
+                    MemoryItemRow(label = "Sleep time", value = DateUtils.formatClock(settings.sleepTimeMinutes))
+                    MemoryItemRow(label = "Fixed commitment", value = settings.dailyCommitment.ifBlank { "None set" })
+                    MemoryItemRow(label = "Tone preference", value = "${settings.tonePreference.title} (${settings.tonePreference.description})")
+                    MemoryItemRow(
+                        label = "Morning check-in",
+                        value = if (settings.morningReminderEnabled) "Enabled" else "Disabled",
+                    )
+                    MemoryItemRow(
+                        label = "Follow-up prompt",
+                        value = if (settings.followUpEnabled) "Enabled" else "Disabled",
+                    )
+                    MemoryItemRow(
+                        label = "Evening reflection",
+                        value = if (settings.eveningReflectionEnabled) "Enabled" else "Disabled",
+                    )
                 }
             }
         }
 
-        // User Corrections & Explicit Adjustments
+        // 2. ADDED BY YOU: Custom Memory Notes
         item {
             SectionCard {
                 Row(
@@ -176,75 +197,74 @@ fun MemoryScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CardTitle("Explicit Adjustments", Icons.Default.Bookmark)
+                    CardTitle("Added by you", Icons.Default.Bookmark)
                     IconButton(onClick = { showAddCorrectionDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add memory adjustment", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Add, contentDescription = "Add custom memory", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Text(
-                    text = "Explicit user adjustments, interaction notes, or corrections the companion remembers.",
+                    text = "Explicit preferences or routine notes you asked the companion to remember.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                if (corrections.isEmpty()) {
+                if (userAddedMemory.isEmpty()) {
                     Text(
-                        text = "No explicit adjustments recorded yet. Tap + to add any preference note.",
+                        text = "No custom notes added yet. Tap + to add an explicit memory note.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 } else {
-                    corrections.forEach { item ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    PillBadge(
-                                        text = item.category,
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = item.note,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                }
-                                Row {
-                                    IconButton(
-                                        onClick = {
-                                            editingCorrection = item
-                                            editCorrectionText = item.note
-                                        },
-                                    ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            scope.launch { container.userCorrectionRepository.deleteCorrection(item.id) }
-                                        },
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            }
-                        }
+                    userAddedMemory.forEach { item ->
+                        MemoryCardRow(
+                            item = item,
+                            onEdit = {
+                                editingCorrection = item
+                                editCorrectionText = item.note
+                            },
+                            onForget = {
+                                scope.launch { container.userCorrectionRepository.deleteCorrection(item.id) }
+                            },
+                        )
                     }
                 }
             }
         }
 
-        // Stored Daily Intentions History
+        // 3. LEARNED FROM YOUR ACTIVITY
+        item {
+            SectionCard {
+                CardTitle("Learned from your activity", Icons.Default.AutoAwesome)
+                Text(
+                    text = "Logged responses, timing preferences, and intention follow-throughs.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                if (learnedMemory.isEmpty()) {
+                    Text(
+                        text = "As you respond to prompts (Start, Move, Drop), learned interaction patterns will appear here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                } else {
+                    learnedMemory.take(15).forEach { item ->
+                        MemoryCardRow(
+                            item = item,
+                            onEdit = {
+                                editingCorrection = item
+                                editCorrectionText = item.note
+                            },
+                            onForget = {
+                                scope.launch { container.userCorrectionRepository.deleteCorrection(item.id) }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        // 4. Stored Daily Intentions
         item {
             Text(
                 text = "Stored Intentions (${plans.size})",
@@ -257,7 +277,7 @@ fun MemoryScreen(
             item {
                 SectionCard {
                     Text(
-                        text = "No daily intentions saved yet.",
+                        text = "No daily intentions stored yet.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -297,13 +317,13 @@ fun MemoryScreen(
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = if (plan.skipped) "Skipped / relaxed" else plan.text,
+                                text = if (plan.skipped) "Nothing ambitious today" else plan.text,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             if (plan.firstStep.isNotBlank()) {
                                 Text(
-                                    text = "Step: ${plan.firstStep}",
+                                    text = "Start: ${plan.firstStep}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -315,17 +335,17 @@ fun MemoryScreen(
                                 scope.launch { container.dailyPlanRepository.deletePlan(plan.id) }
                             },
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, contentDescription = "Forget this", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             }
         }
 
-        // Export and Reset Actions
+        // 5. Actions: Export data & Delete all memory
         item {
             SectionCard {
-                CardTitle("Data Management", Icons.Default.FileDownload)
+                CardTitle("Memory Management", Icons.Default.FileDownload)
                 OutlinedButton(
                     onClick = {
                         scope.launch {
@@ -352,7 +372,7 @@ fun MemoryScreen(
                     ),
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null)
-                    Text("Delete All Remembered Data", modifier = Modifier.padding(start = 8.dp))
+                    Text("Delete All Memory", modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -362,14 +382,14 @@ fun MemoryScreen(
         }
     }
 
-    // Add Correction Dialog
+    // Add Memory Dialog
     if (showAddCorrectionDialog) {
         AlertDialog(
             onDismissRequest = { showAddCorrectionDialog = false },
-            title = { Text("Add Memory Adjustment") },
+            title = { Text("Add Memory Note") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Tell the companion an explicit habit or preference to remember:")
+                    Text("Tell the companion a preference or routine to remember:")
                     OutlinedTextField(
                         value = newCorrectionNote,
                         onValueChange = { newCorrectionNote = it },
@@ -387,6 +407,7 @@ fun MemoryScreen(
                                 container.userCorrectionRepository.addCorrection(
                                     category = "PREFERENCE",
                                     note = newCorrectionNote,
+                                    source = "USER",
                                 )
                                 newCorrectionNote = ""
                                 showAddCorrectionDialog = false
@@ -394,7 +415,7 @@ fun MemoryScreen(
                         }
                     },
                 ) {
-                    Text("Save to Memory")
+                    Text("Remember")
                 }
             },
             dismissButton = {
@@ -405,12 +426,12 @@ fun MemoryScreen(
         )
     }
 
-    // Edit Correction Dialog
+    // Edit Memory Dialog
     if (editingCorrection != null) {
         val item = editingCorrection!!
         AlertDialog(
             onDismissRequest = { editingCorrection = null },
-            title = { Text("Edit Adjustment") },
+            title = { Text("Edit Memory") },
             text = {
                 OutlinedTextField(
                     value = editCorrectionText,
@@ -441,13 +462,13 @@ fun MemoryScreen(
         )
     }
 
-    // Clear All Confirm Dialog
+    // Delete All Memory Dialog
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
             title = { Text("Delete all remembered data?") },
             text = {
-                Text("This will permanently clear all intentions, routines, check-in history, and local memory from this device. This cannot be undone.")
+                Text("This permanently erases all intentions, rhythm records, interaction history, and local memory from this device.")
             },
             confirmButton = {
                 Button(
@@ -455,7 +476,7 @@ fun MemoryScreen(
                         scope.launch {
                             container.resetAllLocalData()
                             showClearConfirmDialog = false
-                            Toast.makeText(context, "All local memory cleared.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "All memory deleted.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -463,7 +484,7 @@ fun MemoryScreen(
                         contentColor = MaterialTheme.colorScheme.onError,
                     ),
                 ) {
-                    Text("Clear Everything")
+                    Text("Delete All Memory")
                 }
             },
             dismissButton = {
@@ -472,6 +493,49 @@ fun MemoryScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun MemoryCardRow(
+    item: UserCorrectionEntity,
+    onEdit: () -> Unit,
+    onForget: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PillBadge(
+                    text = item.category,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = item.note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onForget) {
+                    Icon(Icons.Default.Delete, contentDescription = "Forget this", modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
 }
 

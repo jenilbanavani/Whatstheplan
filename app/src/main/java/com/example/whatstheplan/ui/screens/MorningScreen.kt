@@ -51,7 +51,6 @@ import com.example.whatstheplan.data.local.repository.DailyPlanRepository
 import com.example.whatstheplan.data.local.repository.FunFactRepository
 import com.example.whatstheplan.data.local.repository.SettingsRepository
 import com.example.whatstheplan.domain.model.FunFact
-import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
 import com.example.whatstheplan.ui.components.PillBadge
 import com.example.whatstheplan.ui.components.PrimaryGlowButton
@@ -72,15 +71,16 @@ fun MorningScreen(
 
     var planText by remember { mutableStateOf("") }
     var firstStep by remember { mutableStateOf("") }
-    var selectedPrompt by remember { mutableStateOf<String?>(null) }
+    var selectedSuggestion by remember { mutableStateOf<String?>(null) }
     var savedFact by remember { mutableStateOf<FunFact?>(null) }
 
-    val prompts = listOf(
-        "📚 Study" to "Read first 2 pages",
-        "💻 Deep Work" to "Open project & write 1 task",
-        "🏃 Exercise" to "Put on workout shoes",
-        "🛠 Build something" to "Sketch the initial outline",
-        "🧘 Unwind" to "Take 5 deep breaths",
+    val suggestions = listOf(
+        "Study" to "Open textbook / notes",
+        "Project" to "Write three bullet points",
+        "Exercise" to "Put on shoes & stretch",
+        "Life admin" to "Clear one pending email / task",
+        "Rest" to "Take 10 minutes of quiet screen-free time",
+        "Something else" to "Decide the very first 2 minutes",
     )
 
     val tone = settings.tonePreference
@@ -118,44 +118,47 @@ fun MorningScreen(
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Daily Intention",
+                        text = "Your one thing today",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        text = "What's the one thing?",
-                        style = MaterialTheme.typography.headlineMedium,
+                        text = greeting,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = greeting,
+                        text = "Pick one realistic intention. Low friction > many features.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                // Quick Intention Chips
+                // Suggestions Chips
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    prompts.forEach { (prompt, defaultStep) ->
-                        val cleanPrompt = prompt.substringAfter(" ")
-                        val isSelected = selectedPrompt == prompt
+                    suggestions.forEach { (category, defaultStep) ->
+                        val isSelected = selectedSuggestion == category
                         FilterChip(
                             selected = isSelected,
                             onClick = {
                                 if (isSelected) {
-                                    selectedPrompt = null
+                                    selectedSuggestion = null
                                 } else {
-                                    selectedPrompt = prompt
-                                    if (planText.isBlank()) planText = cleanPrompt
-                                    if (firstStep.isBlank()) firstStep = defaultStep
+                                    selectedSuggestion = category
+                                    if (planText.isBlank() && category != "Something else") {
+                                        planText = category
+                                    }
+                                    if (firstStep.isBlank()) {
+                                        firstStep = defaultStep
+                                    }
                                 }
                             },
-                            label = { Text(prompt, style = MaterialTheme.typography.bodyMedium) },
+                            label = { Text(category, style = MaterialTheme.typography.bodyMedium) },
                             shape = RoundedCornerShape(100.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -166,13 +169,13 @@ fun MorningScreen(
                     }
                 }
 
-                // 1. One Important Intention
+                // 1. Natural Intention Text Input
                 OutlinedTextField(
                     value = planText,
                     onValueChange = { planText = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Today's Main Intention") },
-                    placeholder = { Text("e.g. Finish physics problem set, write thesis draft") },
+                    label = { Text("Today's one intention") },
+                    placeholder = { Text("e.g. Finish project outline, read chapter 3") },
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -186,8 +189,8 @@ fun MorningScreen(
                     value = firstStep,
                     onValueChange = { firstStep = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Smallest First Step") },
-                    placeholder = { Text("e.g. Open textbook to page 45, write outline bullets") },
+                    label = { Text("Smallest start (first 2 minutes)") },
+                    placeholder = { Text("e.g. Write three bullet points") },
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -197,12 +200,12 @@ fun MorningScreen(
                 )
 
                 PrimaryGlowButton(
-                    text = "Set Today's Intention",
+                    text = "Set Intention",
                     icon = Icons.AutoMirrored.Filled.ArrowForward,
-                    enabled = planText.isNotBlank() || selectedPrompt != null,
+                    enabled = planText.isNotBlank() || selectedSuggestion != null,
                     onClick = {
-                        val text = planText.ifBlank { selectedPrompt.orEmpty() }
-                        val step = firstStep.ifBlank { "Take the first 5 minutes to begin" }
+                        val text = planText.ifBlank { selectedSuggestion.orEmpty() }
+                        val step = firstStep.ifBlank { "Take 2 minutes to start" }
                         scope.launch {
                             planRepository.savePlan(text = text, firstStep = step)
                             val nextFact = funFactRepository.nextFactOrNull()
@@ -214,14 +217,14 @@ fun MorningScreen(
                 OutlinedButton(
                     onClick = {
                         scope.launch {
-                            planRepository.savePlan(text = "", skipped = true)
+                            planRepository.savePlan(text = "Nothing ambitious today", skipped = true)
                             onDone()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
                 ) {
-                    Text("Take today as it comes")
+                    Text("Nothing ambitious today")
                 }
             }
         } else {
@@ -242,7 +245,7 @@ fun MorningScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         PillBadge(
-                            text = "💡 Good to know",
+                            text = "💡 Quick thought",
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -261,7 +264,7 @@ fun MorningScreen(
                     )
 
                     Text(
-                        text = "Intention saved locally. Have a wonderful day.",
+                        text = "Your intention is set. Go make it happen.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

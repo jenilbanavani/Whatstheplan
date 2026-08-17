@@ -1,6 +1,5 @@
 package com.example.whatstheplan.notifications
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -16,55 +15,71 @@ import com.example.whatstheplan.R
 import com.example.whatstheplan.domain.model.TonePreference
 
 object NotificationHelper {
-    const val CHECK_IN_CHANNEL_ID = "daily_followups"
-    const val MORNING_CHANNEL_ID = "morning_reminders"
-    const val EVENING_CHANNEL_ID = "evening_reflections"
+
+    const val CHECK_IN_CHANNEL_ID = "check_in_channel_v2"
+    const val MORNING_CHANNEL_ID = "morning_channel_v2"
+    const val EVENING_CHANNEL_ID = "evening_channel_v2"
 
     const val CHECK_IN_NOTIFICATION_ID = 1001
     const val MORNING_NOTIFICATION_ID = 1002
     const val EVENING_NOTIFICATION_ID = 1003
 
-    fun createChannels(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    fun createChannels(context: Context) = createNotificationChannels(context)
 
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    fun createNotificationChannels(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
         val checkInChannel = NotificationChannel(
             CHECK_IN_CHANNEL_ID,
-            "Daily follow-up",
+            "Daily Follow-Up",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "A single calm follow-up on your planned intention."
+            description = "Context-aware follow-ups with 3 actions: Start 10 min, Move it, Not today"
+            enableVibration(true)
         }
 
         val morningChannel = NotificationChannel(
             MORNING_CHANNEL_ID,
-            "Morning planning",
+            "Morning Planning",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Set your daily intention in the morning."
+            description = "Gentle morning reminder to set your daily intention"
+            enableVibration(true)
         }
 
         val eveningChannel = NotificationChannel(
             EVENING_CHANNEL_ID,
-            "Evening recovery",
+            "Evening Reflection",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Reflect on how your day went."
+            description = "Evening prompt to close out your day with neutral recovery"
+            enableVibration(true)
         }
 
-        manager.createNotificationChannels(listOf(checkInChannel, morningChannel, eveningChannel))
+        manager.createNotificationChannel(checkInChannel)
+        manager.createNotificationChannel(morningChannel)
+        manager.createNotificationChannel(eveningChannel)
     }
 
-    fun canPostNotifications(context: Context): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    fun canPostNotifications(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.POST_NOTIFICATIONS,
+                android.Manifest.permission.POST_NOTIFICATIONS,
             ) == PackageManager.PERMISSION_GRANTED
         } else {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
+    }
+
+    fun showCheckInNotification(
+        context: Context,
+        soundEnabled: Boolean,
+        tone: TonePreference = TonePreference.CALM,
+    ) {
+        showFollowUpNotification(context, soundEnabled, tone)
+    }
 
     fun showFollowUpNotification(
         context: Context,
@@ -75,73 +90,67 @@ object NotificationHelper {
     ) {
         if (!canPostNotifications(context)) return
 
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val title = tone.followUpTitle()
+        val body = tone.followUpBody(intention, firstStep)
+
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_CHECK_IN)
         }
-
-        val pendingIntent = PendingIntent.getActivity(
+        val openAppPendingIntent = PendingIntent.getActivity(
             context,
             CHECK_IN_NOTIFICATION_ID,
-            intent,
+            openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = tone.followUpTitle()
-        val body = tone.followUpBody(intention, firstStep)
+        // Action 1: Start 10 min
+        val start10Intent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_START_10_MIN
+        }
+        val start10PendingIntent = PendingIntent.getBroadcast(
+            context,
+            2001,
+            start10Intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        // Action 2: Move it
+        val moveItIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_MOVE_IT
+        }
+        val moveItPendingIntent = PendingIntent.getBroadcast(
+            context,
+            2002,
+            moveItIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        // Action 3: Not today
+        val notTodayIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_NOT_TODAY
+        }
+        val notTodayPendingIntent = PendingIntent.getBroadcast(
+            context,
+            2003,
+            notTodayIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
         val builder = NotificationCompat.Builder(context, CHECK_IN_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setContentIntent(pendingIntent)
+            .setContentIntent(openAppPendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-
-        // Action 1: Start 10 min
-        val startIntent = Intent(context, CheckInActionReceiver::class.java).apply {
-            action = CheckInActionReceiver.ACTION_START_10_MIN
-        }
-        val startPending = PendingIntent.getBroadcast(
-            context,
-            CHECK_IN_NOTIFICATION_ID + 1,
-            startIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        builder.addAction(0, "⏱️ Start 10 min", startPending)
-
-        // Action 2: Move it
-        val moveIntent = Intent(context, CheckInActionReceiver::class.java).apply {
-            action = CheckInActionReceiver.ACTION_MOVE_IT
-        }
-        val movePending = PendingIntent.getBroadcast(
-            context,
-            CHECK_IN_NOTIFICATION_ID + 2,
-            moveIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        builder.addAction(0, "➡️ Move it", movePending)
-
-        // Action 3: Not today
-        val notTodayIntent = Intent(context, CheckInActionReceiver::class.java).apply {
-            action = CheckInActionReceiver.ACTION_NOT_TODAY
-        }
-        val notTodayPending = PendingIntent.getBroadcast(
-            context,
-            CHECK_IN_NOTIFICATION_ID + 3,
-            notTodayIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        builder.addAction(0, "🛑 Not today", notTodayPending)
+            .addAction(0, "⏱️ Start 10 min", start10PendingIntent)
+            .addAction(0, "➡️ Move it", moveItPendingIntent)
+            .addAction(0, "🛑 Not today", notTodayPendingIntent)
 
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build())
-    }
-
-    // Backward-compatible overload
-    fun showCheckInNotification(context: Context, soundEnabled: Boolean) {
-        showFollowUpNotification(context, soundEnabled)
     }
 
     fun showMorningReminderNotification(
@@ -168,7 +177,7 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, MORNING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Good morning ☀️")
+            .setContentTitle("Your one thing today ☀️")
             .setContentText(greeting)
             .setStyle(NotificationCompat.BigTextStyle().bigText(greeting))
             .setContentIntent(pendingIntent)
@@ -184,6 +193,7 @@ object NotificationHelper {
         context: Context,
         soundEnabled: Boolean,
         tone: TonePreference = TonePreference.CALM,
+        intention: String? = null,
     ) {
         if (!canPostNotifications(context)) return
 
@@ -199,7 +209,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val prompt = tone.eveningPrompt()
+        val prompt = tone.eveningPrompt(intention)
 
         val notification = NotificationCompat.Builder(context, EVENING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)

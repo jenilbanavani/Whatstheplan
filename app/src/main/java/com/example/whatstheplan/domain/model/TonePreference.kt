@@ -19,46 +19,48 @@ enum class TonePreference(
     ;
 
     fun morningGreeting(userName: String?): String {
-        val namePrefix = if (!userName.isNullOrBlank()) ", $userName" else ""
+        val nameSuffix = if (!userName.isNullOrBlank()) ", $userName" else ""
         return when (this) {
-            CALM -> "Good morning$namePrefix ☀️ Take your time to set a clear intention for today."
-            PLAYFUL -> "Rise and shine$namePrefix! ✨ What exciting or important thing are we tackling today?"
-            DIRECT -> "Morning$namePrefix. What is your one priority today?"
+            CALM -> "Good morning$nameSuffix. What is your one priority today?"
+            PLAYFUL -> "Good morning$nameSuffix 👀 What's the one thing today?"
+            DIRECT -> "Morning$nameSuffix. Your one thing today:"
         }
     }
 
     fun followUpTitle(): String = when (this) {
-        CALM -> "Gentle check-in 👋"
-        PLAYFUL -> "Quick vibe check! ✨"
-        DIRECT -> "Priority check 🎯"
+        CALM -> "Gentle check-in"
+        PLAYFUL -> "Project time 👀"
+        DIRECT -> "Priority check"
     }
 
     fun followUpBody(intention: String?, firstStep: String?): String {
-        val hasStep = !firstStep.isNullOrBlank()
-        val target = if (hasStep) "first step: \"$firstStep\"" else (intention?.let { "\"$it\"" } ?: "your daily intention")
+        val target = if (!firstStep.isNullOrBlank()) firstStep else (intention ?: "your intention")
         return when (this) {
-            CALM -> "How is your plan going? If you have 10 minutes, try your $target."
-            PLAYFUL -> "Still feeling good about $target? Let's give it a quick 10-minute spin!"
-            DIRECT -> "Status update: Ready to start $target?"
+            CALM -> "Still realistic? If you have 10 minutes, try: $target"
+            PLAYFUL -> "You planned: \"$target\". Still realistic?"
+            DIRECT -> "Status: Still realistic to start \"$target\"?"
         }
     }
 
-    fun eveningPrompt(): String = when (this) {
-        CALM -> "How did today unfold? Let's peacefully close out the day."
-        PLAYFUL -> "Day complete! 🎉 How did things turn out with your plan?"
-        DIRECT -> "End of day review. Did you complete your intention?"
+    fun eveningPrompt(intention: String? = null): String {
+        val name = if (!intention.isNullOrBlank()) "\"$intention\"" else "Today's plan"
+        return when (this) {
+            CALM -> "$name — How did today unfold? Move it, shrink it, or drop it?"
+            PLAYFUL -> "$name didn't happen today? Move it, shrink it, or drop it?"
+            DIRECT -> "End of day: Did $name get done, moved, or dropped?"
+        }
     }
 
     fun statusFeedback(status: String): String = when (status) {
         "DONE" -> when (this) {
             CALM -> "Nicely done. You followed through on what you intended."
-            PLAYFUL -> "Boom! Mission accomplished 🎉"
+            PLAYFUL -> "Done! Mission accomplished 🎉"
             DIRECT -> "Completed. Good execution."
         }
         "MOVED" -> when (this) {
-            CALM -> "No problem at all. Priorities shift and tomorrow is a fresh start."
-            PLAYFUL -> "Shifted to later! Life happens, we'll get it next time."
-            DIRECT -> "Rescheduled for next time."
+            CALM -> "Priorities shift. Tomorrow is a fresh start."
+            PLAYFUL -> "Moved to later! Life happens, we'll get it next time."
+            DIRECT -> "Rescheduled for tomorrow."
         }
         "DROPPED" -> when (this) {
             CALM -> "A conscious decision to let it go today. That is completely okay."

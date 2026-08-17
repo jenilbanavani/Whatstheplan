@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PlayArrow
@@ -59,7 +58,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whatstheplan.AppContainer
 import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
-import com.example.whatstheplan.ui.components.CardTitle
 import com.example.whatstheplan.ui.components.PillBadge
 import com.example.whatstheplan.ui.components.SectionCard
 import com.example.whatstheplan.utils.DateUtils
@@ -106,6 +104,12 @@ fun TodayScreen(
         LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
     }.getOrDefault("Today")
 
+    val userGreeting = if (settings.userName.isNotBlank()) {
+        "Good morning, ${settings.userName} 👀"
+    } else {
+        "Good morning 👀"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -115,7 +119,7 @@ fun TodayScreen(
     ) {
         Spacer(Modifier.height(4.dp))
 
-        // 1. Header (Greeting & Date)
+        // 1. Clean Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,26 +134,25 @@ fun TodayScreen(
                     letterSpacing = 1.2.sp,
                 )
                 Text(
-                    text = if (settings.userName.isNotBlank()) "Hey, ${settings.userName}" else "Today",
-                    style = MaterialTheme.typography.headlineLarge,
+                    text = userGreeting,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
 
-            // Pause status pill
             if (isPausedToday) {
                 PillBadge(
-                    text = "🔕 Paused for today",
+                    text = "🔕 Paused today",
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
-        // 2. Today's Intention Card (Hero Element)
+        // 2. Today's Main Intention Card
         if (todayPlan == null || (todayPlan?.text.isNullOrBlank() && todayPlan?.skipped == false)) {
-            // Empty state: Prompt to set intention
+            // Empty State: Prompt to pick intention
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,13 +184,13 @@ fun TodayScreen(
                         )
                     }
                     Text(
-                        text = "What is your plan for today?",
+                        text = "Your one thing today",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Take 10 seconds to choose one main intention before you begin.",
+                        text = "Pick one realistic intention before your day begins.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -198,12 +201,12 @@ fun TodayScreen(
                             containerColor = MaterialTheme.colorScheme.primary,
                         ),
                     ) {
-                        Text("Set Intention", fontWeight = FontWeight.Bold)
+                        Text("Choose Intention", fontWeight = FontWeight.Bold)
                     }
                 }
             }
         } else {
-            // Intention Active Card
+            // Active / Completed Intention State
             val plan = todayPlan!!
             val statusColor = when (plan.status) {
                 "DONE" -> MaterialTheme.colorScheme.primary
@@ -234,7 +237,7 @@ fun TodayScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "TODAY'S INTENTION",
+                            text = "YOUR ONE THING TODAY",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -243,9 +246,9 @@ fun TodayScreen(
                         PillBadge(
                             text = when (plan.status) {
                                 "DONE" -> "✓ Done"
-                                "IN_PROGRESS" -> "⏱️ In Progress"
+                                "IN_PROGRESS" -> "⏱️ 10 min burst"
                                 "MOVED" -> "➡️ Moved"
-                                "DROPPED" -> "🛑 Not Today"
+                                "DROPPED" -> "🛑 Not today"
                                 else -> "Active"
                             },
                             containerColor = statusColor.copy(alpha = 0.2f),
@@ -253,14 +256,15 @@ fun TodayScreen(
                         )
                     }
 
+                    // Intention text
                     Text(
-                        text = if (plan.skipped) "Taking today as it comes" else "“${plan.text}”",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = if (plan.skipped) "Nothing ambitious today" else "“${plan.text}”",
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
 
-                    // Smallest First Step
+                    // Smallest start
                     if (plan.firstStep.isNotBlank() && !plan.skipped) {
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -279,7 +283,7 @@ fun TodayScreen(
                                 )
                                 Column {
                                     Text(
-                                        text = "Smallest first step:",
+                                        text = "Smallest start:",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -287,7 +291,7 @@ fun TodayScreen(
                                     Text(
                                         text = plan.firstStep,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
@@ -295,7 +299,7 @@ fun TodayScreen(
                         }
                     }
 
-                    // 10-Minute Active Countdown Banner
+                    // 10-Minute Focus Countdown
                     if (plan.status == "IN_PROGRESS" && remainingSeconds > 0) {
                         val mins = remainingSeconds / 60
                         val secs = remainingSeconds % 60
@@ -337,7 +341,7 @@ fun TodayScreen(
                         }
                     }
 
-                    // Status feedback in selected tone
+                    // Tone Status Feedback
                     if (plan.status != "ACTIVE" && plan.status != "IN_PROGRESS") {
                         Text(
                             text = tone.statusFeedback(plan.status),
@@ -346,14 +350,14 @@ fun TodayScreen(
                         )
                     }
 
-                    // 3 PRIMARY ACTIONS: Start, Move, Not Today
+                    // Primary Action: [Start 10 min] / [Done]
+                    // Secondary Actions: [Move it] [Not today]
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        // Action 1: Start (or Mark Done)
                         if (plan.status == "IN_PROGRESS") {
                             Button(
                                 onClick = {
@@ -361,11 +365,12 @@ fun TodayScreen(
                                         container.dailyPlanRepository.updateStatus("DONE")
                                         container.userCorrectionRepository.addCorrection(
                                             category = "INTENTION",
-                                            note = "Marked intention as DONE: ${plan.text}",
+                                            note = "Finished intention: ${plan.text}",
+                                            source = "LEARNED",
                                         )
                                     }
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1.2f),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
@@ -383,10 +388,11 @@ fun TodayScreen(
                                         container.userCorrectionRepository.addCorrection(
                                             category = "INTENTION",
                                             note = "Started 10 min on: ${plan.text}",
+                                            source = "LEARNED",
                                         )
                                     }
                                 },
-                                modifier = Modifier.weight(1.2f),
+                                modifier = Modifier.weight(1.3f),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
@@ -394,11 +400,11 @@ fun TodayScreen(
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Start 10m", fontWeight = FontWeight.Bold)
+                                Text("Start 10 min", fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        // Action 2: Move it
+                        // Secondary Action 1: [Move it]
                         if (plan.status != "MOVED") {
                             OutlinedButton(
                                 onClick = { showMoveDialog = true },
@@ -407,11 +413,11 @@ fun TodayScreen(
                             ) {
                                 Icon(Icons.Default.Forward, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Move")
+                                Text("Move it")
                             }
                         }
 
-                        // Action 3: Not today
+                        // Secondary Action 2: [Not today]
                         if (plan.status != "DROPPED" && plan.status != "DONE") {
                             OutlinedButton(
                                 onClick = { showNotTodayDialog = true },
@@ -428,7 +434,7 @@ fun TodayScreen(
             }
         }
 
-        // 3. Pause for Today Control
+        // 3. Pause Notifications Today Control
         SectionCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -438,6 +444,7 @@ fun TodayScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f),
                 ) {
                     Box(
                         modifier = Modifier
@@ -455,12 +462,12 @@ fun TodayScreen(
                     }
                     Column {
                         Text(
-                            text = if (isPausedToday) "Notifications paused today" else "Pause prompts for today",
+                            text = if (isPausedToday) "Notifications paused today" else "Pause notifications today",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = if (isPausedToday) "Resumes automatically tomorrow morning" else "Need uninterrupted focus or rest?",
+                            text = if (isPausedToday) "Resumes tomorrow morning automatically" else "Mute all prompts for the rest of today",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -484,7 +491,7 @@ fun TodayScreen(
             }
         }
 
-        // 4. Evening Recovery Prompt
+        // 4. Evening Reflection Card
         SectionCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -494,6 +501,7 @@ fun TodayScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f),
                 ) {
                     Box(
                         modifier = Modifier
@@ -511,12 +519,12 @@ fun TodayScreen(
                     }
                     Column {
                         Text(
-                            text = "Evening Recovery",
+                            text = "Evening Reflection",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = if (todayReflection != null) "Reflected: ${todayReflection?.completion}" else "Reflect on how today unfolded",
+                            text = if (todayReflection != null) "Reflected: ${todayReflection?.completion}" else "Close out today peacefully without guilt",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -535,18 +543,18 @@ fun TodayScreen(
         Spacer(Modifier.height(16.dp))
     }
 
-    // Move Dialog
+    // Move It Dialog
     if (showMoveDialog) {
         AlertDialog(
             onDismissRequest = { showMoveDialog = false },
             title = { Text("Move this intention?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Priorities shift. That's completely normal. You can move this intention to later.")
+                    Text("Priorities shift. Move this intention to later or tomorrow.")
                     OutlinedTextField(
                         value = moveNote,
                         onValueChange = { moveNote = it },
-                        placeholder = { Text("Optional note (e.g. Moving to tomorrow 10am)") },
+                        placeholder = { Text("Optional note (e.g. Move to tomorrow 10am)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                     )
@@ -560,6 +568,7 @@ fun TodayScreen(
                             container.userCorrectionRepository.addCorrection(
                                 category = "INTENTION",
                                 note = "Moved intention: ${todayPlan?.text}. Note: $moveNote",
+                                source = "LEARNED",
                             )
                             showMoveDialog = false
                         }
@@ -592,6 +601,7 @@ fun TodayScreen(
                             container.userCorrectionRepository.addCorrection(
                                 category = "INTENTION",
                                 note = "Dropped intention for today: ${todayPlan?.text}",
+                                source = "LEARNED",
                             )
                             showNotTodayDialog = false
                         }

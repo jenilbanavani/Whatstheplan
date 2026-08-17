@@ -43,6 +43,11 @@ class SettingsRepository(private val context: Context) {
         reschedule()
     }
 
+    suspend fun setSleepTimeMinutes(minutes: Int) {
+        dataStore.edit { it[Keys.SLEEP_TIME_MINUTES] = normalizeMinute(minutes) }
+        reschedule()
+    }
+
     suspend fun setDailyCommitment(commitment: String) {
         dataStore.edit { it[Keys.DAILY_COMMITMENT] = commitment.trim() }
     }
@@ -53,6 +58,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setPausedTodayDate(date: String) {
         dataStore.edit { it[Keys.PAUSED_TODAY_DATE] = date }
+    }
+
+    suspend fun setNotificationFeedback(feedback: String) {
+        dataStore.edit { it[Keys.NOTIFICATION_FEEDBACK] = feedback }
     }
 
     suspend fun setQuietHours(startMinutes: Int, endMinutes: Int) {
@@ -81,8 +90,20 @@ class SettingsRepository(private val context: Context) {
         reschedule()
     }
 
+    suspend fun setFollowUpEnabled(enabled: Boolean) {
+        dataStore.edit {
+            it[Keys.FOLLOW_UP_ENABLED] = enabled
+            it[Keys.CHECK_INS_ENABLED] = enabled
+        }
+        reschedule()
+    }
+
     suspend fun setCheckInsEnabled(enabled: Boolean) {
-        dataStore.edit { it[Keys.CHECK_INS_ENABLED] = enabled }
+        setFollowUpEnabled(enabled)
+    }
+
+    suspend fun setEveningReflectionEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.EVENING_REFLECTION_ENABLED] = enabled }
         reschedule()
     }
 
@@ -162,18 +183,22 @@ class SettingsRepository(private val context: Context) {
             setupComplete = preferences[Keys.SETUP_COMPLETE] ?: false,
             userName = preferences[Keys.USER_NAME] ?: "",
             wakeTimeMinutes = preferences[Keys.WAKE_TIME_MINUTES] ?: (7 * 60 + 30),
+            sleepTimeMinutes = preferences[Keys.SLEEP_TIME_MINUTES] ?: (23 * 60 + 30),
             dailyCommitment = preferences[Keys.DAILY_COMMITMENT] ?: "",
             tonePreference = TonePreference.entries.firstOrNull {
                 it.name == preferences[Keys.TONE_PREFERENCE]
             } ?: TonePreference.CALM,
             morningReminderEnabled = preferences[Keys.MORNING_REMINDER_ENABLED] ?: true,
-            checkInsEnabled = preferences[Keys.CHECK_INS_ENABLED] ?: true,
+            followUpEnabled = preferences[Keys.FOLLOW_UP_ENABLED] ?: (preferences[Keys.CHECK_INS_ENABLED] ?: true),
+            checkInsEnabled = preferences[Keys.FOLLOW_UP_ENABLED] ?: (preferences[Keys.CHECK_INS_ENABLED] ?: true),
+            eveningReflectionEnabled = preferences[Keys.EVENING_REFLECTION_ENABLED] ?: true,
             checkInIntervalMinutes = preferences[Keys.CHECK_IN_INTERVAL_MINUTES] ?: 60,
             activeStartMinutes = preferences[Keys.ACTIVE_START_MINUTES] ?: 9 * 60,
             activeEndMinutes = preferences[Keys.ACTIVE_END_MINUTES] ?: 22 * 60,
             quietHoursStartMinutes = preferences[Keys.QUIET_HOURS_START_MINUTES] ?: 22 * 60,
             quietHoursEndMinutes = preferences[Keys.QUIET_HOURS_END_MINUTES] ?: (7 * 60 + 30),
             pausedTodayDate = preferences[Keys.PAUSED_TODAY_DATE] ?: "",
+            notificationFeedback = preferences[Keys.NOTIFICATION_FEEDBACK] ?: "",
             funFactsEnabled = preferences[Keys.FUN_FACTS_ENABLED] ?: true,
             screenTimeInsightsEnabled = preferences[Keys.SCREEN_TIME_INSIGHTS_ENABLED] ?: false,
             themeMode = ThemeMode.entries.firstOrNull {
@@ -196,16 +221,20 @@ class SettingsRepository(private val context: Context) {
         val SETUP_COMPLETE = booleanPreferencesKey("setup_complete")
         val USER_NAME = stringPreferencesKey("user_name")
         val WAKE_TIME_MINUTES = intPreferencesKey("wake_time_minutes")
+        val SLEEP_TIME_MINUTES = intPreferencesKey("sleep_time_minutes")
         val DAILY_COMMITMENT = stringPreferencesKey("daily_commitment")
         val TONE_PREFERENCE = stringPreferencesKey("tone_preference")
         val MORNING_REMINDER_ENABLED = booleanPreferencesKey("morning_reminder_enabled")
+        val FOLLOW_UP_ENABLED = booleanPreferencesKey("follow_up_enabled")
         val CHECK_INS_ENABLED = booleanPreferencesKey("check_ins_enabled")
+        val EVENING_REFLECTION_ENABLED = booleanPreferencesKey("evening_reflection_enabled")
         val CHECK_IN_INTERVAL_MINUTES = intPreferencesKey("check_in_interval_minutes")
         val ACTIVE_START_MINUTES = intPreferencesKey("active_start_minutes")
         val ACTIVE_END_MINUTES = intPreferencesKey("active_end_minutes")
         val QUIET_HOURS_START_MINUTES = intPreferencesKey("quiet_hours_start_minutes")
         val QUIET_HOURS_END_MINUTES = intPreferencesKey("quiet_hours_end_minutes")
         val PAUSED_TODAY_DATE = stringPreferencesKey("paused_today_date")
+        val NOTIFICATION_FEEDBACK = stringPreferencesKey("notification_feedback")
         val FUN_FACTS_ENABLED = booleanPreferencesKey("fun_facts_enabled")
         val SCREEN_TIME_INSIGHTS_ENABLED = booleanPreferencesKey("screen_time_insights_enabled")
         val THEME_MODE = stringPreferencesKey("theme_mode")
