@@ -13,10 +13,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.whatstheplan.MainActivity
 import com.example.whatstheplan.R
-import com.example.whatstheplan.domain.model.ActivityType
+import com.example.whatstheplan.domain.model.TonePreference
 
 object NotificationHelper {
-    const val CHECK_IN_CHANNEL_ID = "hourly_check_ins"
+    const val CHECK_IN_CHANNEL_ID = "daily_followups"
     const val MORNING_CHANNEL_ID = "morning_reminders"
     const val EVENING_CHANNEL_ID = "evening_reflections"
 
@@ -31,10 +31,10 @@ object NotificationHelper {
 
         val checkInChannel = NotificationChannel(
             CHECK_IN_CHANNEL_ID,
-            "Hourly check-ins",
+            "Daily follow-up",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Gentle reminders to decide what you are using your phone for."
+            description = "A single calm follow-up on your planned intention."
         }
 
         val morningChannel = NotificationChannel(
@@ -42,12 +42,12 @@ object NotificationHelper {
             "Morning planning",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Start your day with a clear plan."
+            description = "Set your daily intention in the morning."
         }
 
         val eveningChannel = NotificationChannel(
             EVENING_CHANNEL_ID,
-            "Evening reflection",
+            "Evening recovery",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             description = "Reflect on how your day went."
@@ -66,7 +66,13 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
 
-    fun showCheckInNotification(context: Context, soundEnabled: Boolean) {
+    fun showFollowUpNotification(
+        context: Context,
+        soundEnabled: Boolean,
+        tone: TonePreference = TonePreference.CALM,
+        intention: String? = null,
+        firstStep: String? = null,
+    ) {
         if (!canPostNotifications(context)) return
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -81,42 +87,69 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val title = tone.followUpTitle()
+        val body = tone.followUpBody(intention, firstStep)
+
         val builder = NotificationCompat.Builder(context, CHECK_IN_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Hey 👋")
-            .setContentText("What are you doing right now?")
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("Before you keep going, take five seconds: what are you doing right now?"),
-            )
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-        // Quick 1-tap notification actions
-        listOf(
-            ActivityType.STUDYING to "📚 Study",
-            ActivityType.WORKING to "💻 Work",
-            ActivityType.BREAKING to "😴 Break",
-        ).forEachIndexed { index, (activity, label) ->
-            val actionIntent = Intent(context, CheckInActionReceiver::class.java).apply {
-                action = CheckInActionReceiver.ACTION_QUICK_CHECK_IN
-                putExtra(CheckInActionReceiver.EXTRA_ACTIVITY, activity.name)
-            }
-            val actionPendingIntent = PendingIntent.getBroadcast(
-                context,
-                CHECK_IN_NOTIFICATION_ID + 10 + index,
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-            builder.addAction(0, label, actionPendingIntent)
+        // Action 1: Start 10 min
+        val startIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_START_10_MIN
         }
+        val startPending = PendingIntent.getBroadcast(
+            context,
+            CHECK_IN_NOTIFICATION_ID + 1,
+            startIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        builder.addAction(0, "⏱️ Start 10 min", startPending)
+
+        // Action 2: Move it
+        val moveIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_MOVE_IT
+        }
+        val movePending = PendingIntent.getBroadcast(
+            context,
+            CHECK_IN_NOTIFICATION_ID + 2,
+            moveIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        builder.addAction(0, "➡️ Move it", movePending)
+
+        // Action 3: Not today
+        val notTodayIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_NOT_TODAY
+        }
+        val notTodayPending = PendingIntent.getBroadcast(
+            context,
+            CHECK_IN_NOTIFICATION_ID + 3,
+            notTodayIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        builder.addAction(0, "🛑 Not today", notTodayPending)
 
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build())
     }
 
-    fun showMorningReminderNotification(context: Context, soundEnabled: Boolean) {
+    // Backward-compatible overload
+    fun showCheckInNotification(context: Context, soundEnabled: Boolean) {
+        showFollowUpNotification(context, soundEnabled)
+    }
+
+    fun showMorningReminderNotification(
+        context: Context,
+        soundEnabled: Boolean,
+        tone: TonePreference = TonePreference.CALM,
+        userName: String? = null,
+    ) {
         if (!canPostNotifications(context)) return
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -131,14 +164,13 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val greeting = tone.morningGreeting(userName)
+
         val notification = NotificationCompat.Builder(context, MORNING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Good morning ☀️")
-            .setContentText("What's the plan today?")
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("Take a moment before the day starts: what do you actually want to do today?"),
-            )
+            .setContentText(greeting)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(greeting))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
@@ -148,7 +180,11 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(MORNING_NOTIFICATION_ID, notification)
     }
 
-    fun showEveningReflectionNotification(context: Context, soundEnabled: Boolean) {
+    fun showEveningReflectionNotification(
+        context: Context,
+        soundEnabled: Boolean,
+        tone: TonePreference = TonePreference.CALM,
+    ) {
         if (!canPostNotifications(context)) return
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -163,14 +199,13 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val prompt = tone.eveningPrompt()
+
         val notification = NotificationCompat.Builder(context, EVENING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Evening reflection 🌙")
-            .setContentText("How did today go?")
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("Close the loop on today. Take a quick moment to reflect."),
-            )
+            .setContentTitle("Evening recovery 🌙")
+            .setContentText(prompt)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(prompt))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)

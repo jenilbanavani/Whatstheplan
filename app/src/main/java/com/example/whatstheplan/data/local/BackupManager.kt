@@ -1,22 +1,31 @@
 package com.example.whatstheplan.data.local
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.example.whatstheplan.AppContainer
 import com.example.whatstheplan.data.local.database.entities.CheckInEntity
 import com.example.whatstheplan.data.local.database.entities.DailyPlanEntity
 import com.example.whatstheplan.data.local.database.entities.DailyReflectionEntity
 import com.example.whatstheplan.data.local.database.entities.ScreenTimeSnapshotEntity
+import com.example.whatstheplan.data.local.database.entities.UserCorrectionEntity
 import com.example.whatstheplan.domain.model.ThemeMode
+import com.example.whatstheplan.domain.model.TonePreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 
 object BackupManager {
 
     suspend fun exportToJson(container: AppContainer): String = withContext(Dispatchers.IO) {
         val root = JSONObject()
-        root.put("version", 1)
+        root.put("version", 2)
         root.put("exported_at", System.currentTimeMillis())
 
         // 1. Daily Plans
@@ -26,6 +35,8 @@ object BackupManager {
             val obj = JSONObject().apply {
                 put("date", plan.date)
                 put("text", plan.text)
+                put("firstStep", plan.firstStep)
+                put("status", plan.status)
                 put("createdAt", plan.createdAt)
                 put("skipped", plan.skipped)
             }
@@ -33,7 +44,20 @@ object BackupManager {
         }
         root.put("plans", plansArray)
 
-        // 2. Check-Ins
+        // 2. User Corrections / Memory
+        val corrections = container.database.userCorrectionDao().getAll()
+        val correctionsArray = JSONArray()
+        for (c in corrections) {
+            val obj = JSONObject().apply {
+                put("category", c.category)
+                put("note", c.note)
+                put("timestamp", c.timestamp)
+            }
+            correctionsArray.put(obj)
+        }
+        root.put("corrections", correctionsArray)
+
+        // 3. Check-Ins
         val checkIns = container.database.checkInDao().getAll()
         val checkInsArray = JSONArray()
         for (checkIn in checkIns) {
@@ -47,7 +71,7 @@ object BackupManager {
         }
         root.put("check_ins", checkInsArray)
 
-        // 3. Reflections
+        // 4. Reflections
         val reflections = container.database.dailyReflectionDao().getAll()
         val reflectionsArray = JSONArray()
         for (reflection in reflections) {
@@ -62,29 +86,17 @@ object BackupManager {
         }
         root.put("reflections", reflectionsArray)
 
-        // 4. Screen Times
-        val screenTimes = container.database.screenTimeDao().getAll()
-        val screenTimesArray = JSONArray()
-        for (st in screenTimes) {
-            val obj = JSONObject().apply {
-                put("date", st.date)
-                put("totalMillis", st.totalMillis)
-                put("capturedAt", st.capturedAt)
-            }
-            screenTimesArray.put(obj)
-        }
-        root.put("screen_times", screenTimesArray)
-
         // 5. Settings
         val settings = container.settingsRepository.settingsFlow.first()
         val settingsObj = JSONObject().apply {
+            put("userName", settings.userName)
+            put("wakeTimeMinutes", settings.wakeTimeMinutes)
+            put("dailyCommitment", settings.dailyCommitment)
+            put("tonePreference", settings.tonePreference.name)
             put("morningReminderEnabled", settings.morningReminderEnabled)
             put("checkInsEnabled", settings.checkInsEnabled)
-            put("checkInIntervalMinutes", settings.checkInIntervalMinutes)
-            put("activeStartMinutes", settings.activeStartMinutes)
-            put("activeEndMinutes", settings.activeEndMinutes)
-            put("funFactsEnabled", settings.funFactsEnabled)
-            put("screenTimeInsightsEnabled", settings.screenTimeInsightsEnabled)
+            put("quietHoursStartMinutes", settings.quietHoursStartMinutes)
+            put("quietHoursEndMinutes", settings.quietHoursEndMinutes)
             put("themeMode", settings.themeMode.name)
             put("notificationSound", settings.notificationSound)
         }
@@ -93,11 +105,10 @@ object BackupManager {
         root.toString(2)
     }
 
-    suspend fun importFromJson(container: AppContainer, jsonString: String): Result<Int> =
+    suspend fun importFromJson(container: AppContainer, jsonString: String): Boolean =
         withContext(Dispatchers.IO) {
             runCatching {
                 val root = JSONObject(jsonString)
-                var totalImported = 0
 
                 // 1. Plans
                 if (root.has("plans")) {
@@ -109,6 +120,8 @@ object BackupManager {
                             DailyPlanEntity(
                                 date = obj.getString("date"),
                                 text = obj.getString("text"),
+                                firstStep = obj.optString("firstStep", ""),
+                                status = obj.optString("status", "ACTIVE"),
                                 createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
                                 skipped = obj.optBoolean("skipped", false),
                             ),
@@ -116,11 +129,25 @@ object BackupManager {
                     }
                     if (plans.isNotEmpty()) {
                         container.database.dailyPlanDao().insertAll(plans)
-                        totalImported += plans.size
                     }
                 }
 
-                // 2. Check-Ins
+                // 2. Corrections / Memory
+                if (root.has("corrections")) {
+                    val arr = root.getJSONArray("corrections")
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        container.database.userCorrectionDao().insert(
+                            UserCorrectionEntity(
+                                category = obj.optString("category", "PREFERENCE"),
+                                note = obj.getString("note"),
+                                timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                            ),
+                        )
+                    }
+                }
+
+                // 3. Check-Ins
                 if (root.has("check_ins")) {
                     val arr = root.getJSONArray("check_ins")
                     val checkIns = mutableListOf<CheckInEntity>()
@@ -137,11 +164,10 @@ object BackupManager {
                     }
                     if (checkIns.isNotEmpty()) {
                         container.database.checkInDao().insertAll(checkIns)
-                        totalImported += checkIns.size
                     }
                 }
 
-                // 3. Reflections
+                // 4. Reflections
                 if (root.has("reflections")) {
                     val arr = root.getJSONArray("reflections")
                     val reflections = mutableListOf<DailyReflectionEntity>()
@@ -159,27 +185,6 @@ object BackupManager {
                     }
                     if (reflections.isNotEmpty()) {
                         container.database.dailyReflectionDao().insertAll(reflections)
-                        totalImported += reflections.size
-                    }
-                }
-
-                // 4. Screen Times
-                if (root.has("screen_times")) {
-                    val arr = root.getJSONArray("screen_times")
-                    val screenTimes = mutableListOf<ScreenTimeSnapshotEntity>()
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        screenTimes.add(
-                            ScreenTimeSnapshotEntity(
-                                date = obj.getString("date"),
-                                totalMillis = obj.getLong("totalMillis"),
-                                capturedAt = obj.optLong("capturedAt", System.currentTimeMillis()),
-                            ),
-                        )
-                    }
-                    if (screenTimes.isNotEmpty()) {
-                        container.database.screenTimeDao().insertAll(screenTimes)
-                        totalImported += screenTimes.size
                     }
                 }
 
@@ -187,21 +192,48 @@ object BackupManager {
                 if (root.has("settings")) {
                     val s = root.getJSONObject("settings")
                     val repo = container.settingsRepository
+                    if (s.has("userName")) repo.setUserName(s.getString("userName"))
+                    if (s.has("wakeTimeMinutes")) repo.setWakeTimeMinutes(s.getInt("wakeTimeMinutes"))
+                    if (s.has("dailyCommitment")) repo.setDailyCommitment(s.getString("dailyCommitment"))
+                    if (s.has("tonePreference")) {
+                        val tone = TonePreference.entries.firstOrNull { it.name == s.getString("tonePreference") } ?: TonePreference.CALM
+                        repo.setTonePreference(tone)
+                    }
                     if (s.has("morningReminderEnabled")) repo.setMorningReminderEnabled(s.getBoolean("morningReminderEnabled"))
                     if (s.has("checkInsEnabled")) repo.setCheckInsEnabled(s.getBoolean("checkInsEnabled"))
-                    if (s.has("checkInIntervalMinutes")) repo.setCheckInIntervalMinutes(s.getInt("checkInIntervalMinutes"))
-                    if (s.has("activeStartMinutes")) repo.setActiveStartMinutes(s.getInt("activeStartMinutes"))
-                    if (s.has("activeEndMinutes")) repo.setActiveEndMinutes(s.getInt("activeEndMinutes"))
-                    if (s.has("funFactsEnabled")) repo.setFunFactsEnabled(s.getBoolean("funFactsEnabled"))
-                    if (s.has("screenTimeInsightsEnabled")) repo.setScreenTimeInsightsEnabled(s.getBoolean("screenTimeInsightsEnabled"))
                     if (s.has("themeMode")) {
                         val mode = ThemeMode.entries.firstOrNull { it.name == s.getString("themeMode") } ?: ThemeMode.SYSTEM
                         repo.setThemeMode(mode)
                     }
-                    if (s.has("notificationSound")) repo.setNotificationSound(s.getBoolean("notificationSound"))
                 }
 
-                totalImported
-            }
+                true
+            }.getOrDefault(false)
         }
+
+    fun exportToDownloads(context: Context, jsonContent: String): Boolean {
+        return runCatching {
+            val filename = "whats_the_plan_memory_${System.currentTimeMillis()}.json"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                if (uri != null) {
+                    context.contentResolver.openOutputStream(uri)?.use {
+                        it.write(jsonContent.toByteArray())
+                    }
+                    true
+                } else false
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                dir.mkdirs()
+                val file = File(dir, filename)
+                FileOutputStream(file).use { it.write(jsonContent.toByteArray()) }
+                true
+            }
+        }.getOrDefault(false)
+    }
 }

@@ -12,6 +12,9 @@ data class DailyPlanEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val date: String,
     val text: String,
+    val firstStep: String = "",
+    val status: String = "ACTIVE", // ACTIVE, IN_PROGRESS, DONE, MOVED, DROPPED
+    val startedAt: Long? = null,
     val skipped: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )

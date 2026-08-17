@@ -12,41 +12,48 @@ import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 object CheckInScheduler {
-    private const val WORK_NAME_CHECK_IN = "hourly_check_in_work"
+    private const val WORK_NAME_FOLLOW_UP = "daily_follow_up_work"
     private const val WORK_NAME_MORNING = "morning_planning_work"
     private const val WORK_NAME_EVENING = "evening_reflection_work"
 
     fun schedule(context: Context, settings: UserSettings) {
         val workManager = WorkManager.getInstance(context.applicationContext)
 
-        // 1. Hourly check-ins
+        // 1. Single Daily Follow-Up Work (Midday / Afternoon context check)
         if (!settings.checkInsEnabled) {
-            workManager.cancelUniqueWork(WORK_NAME_CHECK_IN)
+            workManager.cancelUniqueWork(WORK_NAME_FOLLOW_UP)
         } else {
-            val intervalMinutes = settings.checkInIntervalMinutes.coerceAtLeast(15).toLong()
-            val request = PeriodicWorkRequestBuilder<CheckInWorker>(
-                intervalMinutes,
-                TimeUnit.MINUTES,
+            // Midday target time: midway between start and end, or default 14:00 (2 PM)
+            val middayMinute = if (settings.activeEndMinutes > settings.activeStartMinutes) {
+                (settings.activeStartMinutes + settings.activeEndMinutes) / 2
+            } else {
+                14 * 60 // 2:00 PM
+            }
+
+            val followUpRequest = PeriodicWorkRequestBuilder<CheckInWorker>(
+                24,
+                TimeUnit.HOURS,
             )
-                .setInitialDelay(initialDelayMillis(settings), TimeUnit.MILLISECONDS)
+                .setInitialDelay(dailyDelayMillis(middayMinute), TimeUnit.MILLISECONDS)
                 .build()
 
             workManager.enqueueUniquePeriodicWork(
-                WORK_NAME_CHECK_IN,
+                WORK_NAME_FOLLOW_UP,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                request,
+                followUpRequest,
             )
         }
 
-        // 2. Morning reminder
+        // 2. Morning Intention Work (Wake time / Morning start)
         if (!settings.morningReminderEnabled) {
             workManager.cancelUniqueWork(WORK_NAME_MORNING)
         } else {
+            val morningMinute = settings.wakeTimeMinutes.coerceAtLeast(0)
             val morningRequest = PeriodicWorkRequestBuilder<MorningReminderWorker>(
                 24,
                 TimeUnit.HOURS,
             )
-                .setInitialDelay(dailyDelayMillis(settings.activeStartMinutes), TimeUnit.MILLISECONDS)
+                .setInitialDelay(dailyDelayMillis(morningMinute), TimeUnit.MILLISECONDS)
                 .build()
 
             workManager.enqueueUniquePeriodicWork(
@@ -56,12 +63,13 @@ object CheckInScheduler {
             )
         }
 
-        // 3. Evening reflection reminder
+        // 3. Evening Recovery Work (Day close)
+        val eveningMinute = settings.activeEndMinutes.coerceAtLeast(18 * 60)
         val eveningRequest = PeriodicWorkRequestBuilder<EveningReflectionWorker>(
             24,
             TimeUnit.HOURS,
         )
-            .setInitialDelay(dailyDelayMillis(settings.activeEndMinutes), TimeUnit.MILLISECONDS)
+            .setInitialDelay(dailyDelayMillis(eveningMinute), TimeUnit.MILLISECONDS)
             .build()
 
         workManager.enqueueUniquePeriodicWork(
@@ -73,12 +81,12 @@ object CheckInScheduler {
 
     fun cancel(context: Context) {
         val workManager = WorkManager.getInstance(context.applicationContext)
-        workManager.cancelUniqueWork(WORK_NAME_CHECK_IN)
+        workManager.cancelUniqueWork(WORK_NAME_FOLLOW_UP)
         workManager.cancelUniqueWork(WORK_NAME_MORNING)
         workManager.cancelUniqueWork(WORK_NAME_EVENING)
     }
 
-    private fun dailyDelayMillis(targetMinuteOfDay: Int): Long {
+    fun dailyDelayMillis(targetMinuteOfDay: Int): Long {
         val now = LocalDateTime.now()
         val targetTime = LocalTime.of(
             (targetMinuteOfDay / 60).coerceIn(0, 23),
@@ -89,27 +97,6 @@ object CheckInScheduler {
         } else {
             LocalDateTime.of(LocalDate.now().plusDays(1), targetTime)
         }
-        return Duration.between(now, targetDateTime).toMillis().coerceAtLeast(10_000L)
-    }
-
-    private fun initialDelayMillis(settings: UserSettings): Long {
-        val now = LocalDateTime.now()
-        val start = LocalTime.of(
-            (settings.activeStartMinutes / 60).coerceIn(0, 23),
-            (settings.activeStartMinutes % 60).coerceIn(0, 59),
-        )
-        val end = LocalTime.of(
-            (settings.activeEndMinutes / 60).coerceIn(0, 23),
-            (settings.activeEndMinutes % 60).coerceIn(0, 59),
-        )
-        val current = now.toLocalTime()
-        val inWindow = if (start <= end) current in start..end else current >= start || current <= end
-
-        val nextRun = when {
-            inWindow -> now.plusMinutes(settings.checkInIntervalMinutes.toLong())
-            start <= end && current < start -> LocalDateTime.of(LocalDate.now(), start)
-            else -> LocalDateTime.of(LocalDate.now().plusDays(1), start)
-        }
-        return Duration.between(now, nextRun).toMillis().coerceAtLeast(10_000L)
+        return Duration.between(now, targetDateTime).toMillis().coerceAtLeast(5_000L)
     }
 }

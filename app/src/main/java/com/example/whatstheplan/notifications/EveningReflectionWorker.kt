@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.whatstheplan.WhatsThePlanApplication
 import com.example.whatstheplan.data.local.repository.SettingsRepository
+import com.example.whatstheplan.utils.DateUtils
 import kotlinx.coroutines.flow.first
 
 class EveningReflectionWorker(
@@ -17,7 +18,8 @@ class EveningReflectionWorker(
         val settings = container?.settingsRepository?.settingsFlow?.first()
             ?: SettingsRepository(applicationContext).settingsFlow.first()
 
-        if (!settings.setupComplete) {
+        val today = DateUtils.todayString()
+        if (!settings.setupComplete || settings.pausedTodayDate == today) {
             return Result.success()
         }
 
@@ -29,6 +31,7 @@ class EveningReflectionWorker(
         NotificationHelper.showEveningReflectionNotification(
             context = applicationContext,
             soundEnabled = settings.notificationSound,
+            tone = settings.tonePreference,
         )
         return Result.success()
     }

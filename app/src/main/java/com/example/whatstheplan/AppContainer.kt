@@ -8,6 +8,7 @@ import com.example.whatstheplan.data.local.repository.DailyReflectionRepository
 import com.example.whatstheplan.data.local.repository.FunFactRepository
 import com.example.whatstheplan.data.local.repository.ScreenTimeRepository
 import com.example.whatstheplan.data.local.repository.SettingsRepository
+import com.example.whatstheplan.data.local.repository.UserCorrectionRepository
 import com.example.whatstheplan.usage.UsageStatsReader
 import com.example.whatstheplan.widgets.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ class AppContainer(context: Context) {
     val dailyPlanRepository = DailyPlanRepository(database.dailyPlanDao(), appContext)
     val checkInRepository = CheckInRepository(database.checkInDao(), appContext)
     val dailyReflectionRepository = DailyReflectionRepository(database.dailyReflectionDao(), appContext)
+    val userCorrectionRepository = UserCorrectionRepository(database.userCorrectionDao())
     val funFactRepository = FunFactRepository(settingsRepository)
     val screenTimeRepository = ScreenTimeRepository(database.screenTimeDao(), appContext)
     val usageStatsReader = UsageStatsReader(appContext)

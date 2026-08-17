@@ -1,15 +1,13 @@
 package com.example.whatstheplan.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,65 +21,53 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Flare
-import androidx.compose.material.icons.filled.HourglassBottom
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whatstheplan.AppContainer
-import com.example.whatstheplan.data.local.database.dao.ActivityCount
-import com.example.whatstheplan.data.local.database.entities.DailyPlanEntity
-import com.example.whatstheplan.data.local.database.entities.DailyReflectionEntity
-import com.example.whatstheplan.data.local.database.entities.ScreenTimeSnapshotEntity
-import com.example.whatstheplan.domain.model.ActivityType
+import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
-import com.example.whatstheplan.ui.components.BentoStatCard
 import com.example.whatstheplan.ui.components.CardTitle
 import com.example.whatstheplan.ui.components.PillBadge
-import com.example.whatstheplan.ui.components.PrimaryGlowButton
 import com.example.whatstheplan.ui.components.SectionCard
-import com.example.whatstheplan.ui.components.WeeklyCapsuleTracker
-import com.example.whatstheplan.ui.components.getActivityColor
 import com.example.whatstheplan.utils.DateUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TodayScreen(
     container: AppContainer,
@@ -90,28 +76,35 @@ fun TodayScreen(
     onNavigateReflection: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val todayPlan by container.dailyPlanRepository.observeToday().collectAsStateWithLifecycle(null)
-    val checkIns by container.checkInRepository.observeToday().collectAsStateWithLifecycle(emptyList())
-    val reflection by container.dailyReflectionRepository.observeToday().collectAsStateWithLifecycle(null)
-    val activityCounts by container.checkInRepository.observeTodayActivityCounts().collectAsStateWithLifecycle(emptyList())
-    val screenTime by container.screenTimeRepository.observeToday().collectAsStateWithLifecycle(null)
     val settings by container.settingsRepository.settingsFlow.collectAsStateWithLifecycle(UserSettings())
+    val todayPlan by container.dailyPlanRepository.observeToday().collectAsStateWithLifecycle(null)
+    val todayReflection by container.dailyReflectionRepository.observeToday().collectAsStateWithLifecycle(null)
 
-    val now = LocalTime.now()
-    val isMorning = now.hour in 5..11
-    val isAfternoon = now.hour in 12..16
+    val todayDate = DateUtils.todayString()
+    val isPausedToday = settings.pausedTodayDate == todayDate
+    val tone = settings.tonePreference
 
-    val greeting = when {
-        isMorning -> "Good morning ☀️"
-        isAfternoon -> "Good afternoon 🌤"
-        else -> "Good evening 🌙"
+    var showMoveDialog by remember { mutableStateOf(false) }
+    var moveNote by remember { mutableStateOf("") }
+    var showNotTodayDialog by remember { mutableStateOf(false) }
+
+    // 10-minute timer ticker
+    var remainingSeconds by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(todayPlan?.status, todayPlan?.startedAt) {
+        if (todayPlan?.status == "IN_PROGRESS" && todayPlan?.startedAt != null) {
+            val elapsed = (System.currentTimeMillis() - todayPlan!!.startedAt!!) / 1000L
+            val target = 10 * 60L // 10 minutes
+            remainingSeconds = (target - elapsed).coerceAtLeast(0L)
+            while (remainingSeconds > 0) {
+                delay(1000L)
+                remainingSeconds -= 1
+            }
+        }
     }
 
-    val formattedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
-    val isFocusActive = System.currentTimeMillis() < settings.focusModeUntilMillis
-    val focusRemainingMinutes = if (isFocusActive) {
-        ((settings.focusModeUntilMillis - System.currentTimeMillis()) / (1000 * 60)).coerceAtLeast(1)
-    } else 0L
+    val formattedDate = runCatching {
+        LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
+    }.getOrDefault("Today")
 
     Column(
         modifier = Modifier
@@ -122,7 +115,7 @@ fun TodayScreen(
     ) {
         Spacer(Modifier.height(4.dp))
 
-        // 1. Personal Header
+        // 1. Header (Greeting & Date)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,186 +123,313 @@ fun TodayScreen(
         ) {
             Column {
                 Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    text = formattedDate.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.2.sp,
                 )
                 Text(
-                    text = formattedDate,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = if (settings.userName.isNotBlank()) "Hey, ${settings.userName}" else "Today",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
-            if (isFocusActive) {
+
+            // Pause status pill
+            if (isPausedToday) {
                 PillBadge(
-                    text = "Focus: ${focusRemainingMinutes}m",
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    text = "🔕 Paused for today",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Spa,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
+            }
+        }
+
+        // 2. Today's Intention Card (Hero Element)
+        if (todayPlan == null || (todayPlan?.text.isNullOrBlank() && todayPlan?.skipped == false)) {
+            // Empty state: Prompt to set intention
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        RoundedCornerShape(24.dp),
                     )
-                }
-            }
-        }
-
-        // 2. HERO CARD — Today's Plan
-        HeroPlanCard(
-            plan = todayPlan,
-            checkInCount = checkIns.size,
-            onSetPlan = onNavigateMorning,
-        )
-
-        // 3. DAILY SNAPSHOT — Bento Stat Cards
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            BentoStatCard(
-                title = "Check-ins",
-                value = "${checkIns.size}",
-                subtitle = if (checkIns.isNotEmpty()) "Logged today" else "Tap to log",
-                icon = Icons.Default.CheckCircle,
-                accentColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateCheckIn,
-            )
-
-            val screenTimeText = screenTime?.let {
-                val hours = it.totalMillis / (1000 * 60 * 60)
-                val mins = (it.totalMillis / (1000 * 60)) % 60
-                if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
-            } ?: if (container.usageStatsReader.hasUsageAccess()) "0m" else "Off"
-
-            BentoStatCard(
-                title = "Screen Time",
-                value = screenTimeText,
-                subtitle = if (container.usageStatsReader.hasUsageAccess()) "Today's usage" else "Tap to enable",
-                icon = Icons.Default.PhoneAndroid,
-                accentColor = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        // 4. QUICK CHECK-IN ACTION BAR
-        PrimaryGlowButton(
-            text = "⚡ Quick Check-In",
-            onClick = onNavigateCheckIn,
-            icon = Icons.Default.ArrowForward,
-        )
-
-        // 5. ACTIVITY BREAKDOWN (If user has logged check-ins today)
-        if (activityCounts.isNotEmpty()) {
-            SectionCard {
-                CardTitle("Today's Activities", Icons.Default.Flare, "${checkIns.size} total")
-                ActivityDistributionView(counts = activityCounts)
-            }
-        }
-
-        // 6. FOCUS MODE / QUICK PAUSE
-        SectionCard {
-            CardTitle("Focus Mode", Icons.Default.NotificationsOff)
-            Text(
-                text = if (isFocusActive) {
-                    "🔕 Check-in notifications are paused for another $focusRemainingMinutes min."
-                } else {
-                    "Temporarily pause check-in reminders for focused work or rest:"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .clickable { onNavigateMorning() },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
             ) {
-                listOf(30 to "30m", 60 to "1h", 120 to "2h", 240 to "4h").forEach { (minutes, label) ->
-                    FilterChip(
-                        selected = false,
-                        onClick = {
-                            scope.launch {
-                                val until = System.currentTimeMillis() + (minutes * 60 * 1000L)
-                                container.settingsRepository.setFocusModeUntil(until)
-                            }
-                        },
-                        label = { Text("Pause $label") },
-                        shape = RoundedCornerShape(100.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WbSunny,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Text(
+                        text = "What is your plan for today?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
+                    Text(
+                        text = "Take 10 seconds to choose one main intention before you begin.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(
+                        onClick = onNavigateMorning,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Text("Set Intention", fontWeight = FontWeight.Bold)
+                    }
                 }
+            }
+        } else {
+            // Intention Active Card
+            val plan = todayPlan!!
+            val statusColor = when (plan.status) {
+                "DONE" -> MaterialTheme.colorScheme.primary
+                "IN_PROGRESS" -> Color(0xFF6EE7B7) // Mint green
+                "MOVED" -> Color(0xFF7FA7FF) // Soft sky
+                "DROPPED" -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.primary
+            }
 
-                if (isFocusActive) {
-                    FilterChip(
-                        selected = true,
-                        onClick = {
-                            scope.launch { container.settingsRepository.clearFocusMode() }
-                        },
-                        label = { Text("Resume Now") },
-                        shape = RoundedCornerShape(100.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer,
-                        ),
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        statusColor.copy(alpha = 0.4f),
+                        RoundedCornerShape(24.dp),
+                    ),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier.padding(22.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "TODAY'S INTENTION",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp,
+                        )
+                        PillBadge(
+                            text = when (plan.status) {
+                                "DONE" -> "✓ Done"
+                                "IN_PROGRESS" -> "⏱️ In Progress"
+                                "MOVED" -> "➡️ Moved"
+                                "DROPPED" -> "🛑 Not Today"
+                                else -> "Active"
+                            },
+                            containerColor = statusColor.copy(alpha = 0.2f),
+                            contentColor = statusColor,
+                        )
+                    }
+
+                    Text(
+                        text = if (plan.skipped) "Taking today as it comes" else "“${plan.text}”",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
+
+                    // Smallest First Step
+                    if (plan.firstStep.isNotBlank() && !plan.skipped) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Column {
+                                    Text(
+                                        text = "Smallest first step:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = plan.firstStep,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 10-Minute Active Countdown Banner
+                    if (plan.status == "IN_PROGRESS" && remainingSeconds > 0) {
+                        val mins = remainingSeconds / 60
+                        val secs = remainingSeconds % 60
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFF6EE7B7).copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Color(0xFF6EE7B7).copy(alpha = 0.5f)),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = null,
+                                        tint = Color(0xFF6EE7B7),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Text(
+                                        text = "10-minute focus burst",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                Text(
+                                    text = "%02d:%02d".format(mins, secs),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF6EE7B7),
+                                )
+                            }
+                        }
+                    }
+
+                    // Status feedback in selected tone
+                    if (plan.status != "ACTIVE" && plan.status != "IN_PROGRESS") {
+                        Text(
+                            text = tone.statusFeedback(plan.status),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    // 3 PRIMARY ACTIONS: Start, Move, Not Today
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Action 1: Start (or Mark Done)
+                        if (plan.status == "IN_PROGRESS") {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        container.dailyPlanRepository.updateStatus("DONE")
+                                        container.userCorrectionRepository.addCorrection(
+                                            category = "INTENTION",
+                                            note = "Marked intention as DONE: ${plan.text}",
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Done", fontWeight = FontWeight.Bold)
+                            }
+                        } else if (plan.status != "DONE") {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        container.dailyPlanRepository.startTimer()
+                                        container.userCorrectionRepository.addCorrection(
+                                            category = "INTENTION",
+                                            note = "Started 10 min on: ${plan.text}",
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.weight(1.2f),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Start 10m", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Action 2: Move it
+                        if (plan.status != "MOVED") {
+                            OutlinedButton(
+                                onClick = { showMoveDialog = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                            ) {
+                                Icon(Icons.Default.Forward, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Move")
+                            }
+                        }
+
+                        // Action 3: Not today
+                        if (plan.status != "DROPPED" && plan.status != "DONE") {
+                            OutlinedButton(
+                                onClick = { showNotTodayDialog = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Not today")
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // 7. EVENING REFLECTION PROMPT
-        EveningReflectionCard(
-            reflection = reflection,
-            onReflect = onNavigateReflection,
-        )
-
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun HeroPlanCard(
-    plan: DailyPlanEntity?,
-    checkInCount: Int,
-    onSetPlan: () -> Unit,
-) {
-    val gradientBrush = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        ),
-    )
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                RoundedCornerShape(26.dp),
-            ),
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(
-            modifier = Modifier
-                .background(gradientBrush)
-                .padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        // 3. Pause for Today Control
+        SectionCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -317,215 +437,174 @@ private fun HeroPlanCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Default.WbSunny,
+                            imageVector = Icons.Default.NotificationsOff,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Text(
-                        text = "TODAY'S PLAN",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 1.2.sp,
-                    )
-                }
-
-                if (plan != null) {
-                    PillBadge(
-                        text = "$checkInCount check-ins",
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
-
-            if (plan != null && plan.text.isNotBlank()) {
-                Text(
-                    text = "“${plan.text}”",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (plan.skipped) {
-                    Text(
-                        text = "Taking today as it comes.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // 7-day capsule streak preview
-                WeeklyCapsuleTracker(
-                    completedDays = setOf(LocalDate.now().dayOfWeek.value),
-                )
-            } else {
-                Text(
-                    text = "What do you want to accomplish today?",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "Take ten seconds before diving in to decide what today is for.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(
-                    onClick = onSetPlan,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    Text("Make today's plan →", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ActivityDistributionView(counts: List<ActivityCount>) {
-    val total = counts.sumOf { it.total }.coerceAtLeast(1)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Proportional Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(10.dp)
-                .clip(RoundedCornerShape(6.dp)),
-        ) {
-            counts.forEach { item ->
-                val weight = (item.total.toFloat() / total).coerceAtLeast(0.01f)
-                val activity = ActivityType.fromCode(item.activity)
-                Box(
-                    modifier = Modifier
-                        .weight(weight)
-                        .fillMaxSize()
-                        .background(getActivityColor(activity)),
-                )
-            }
-        }
-        // Chips
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            counts.forEach { item ->
-                val activity = ActivityType.fromCode(item.activity)
-                Surface(
-                    shape = RoundedCornerShape(100.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(getActivityColor(activity)),
+                    Column {
+                        Text(
+                            text = if (isPausedToday) "Notifications paused today" else "Pause prompts for today",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "${activity.displayName} (${item.total})",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
+                            text = if (isPausedToday) "Resumes automatically tomorrow morning" else "Need uninterrupted focus or rest?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-            }
-        }
-    }
-}
 
-@Composable
-private fun EveningReflectionCard(
-    reflection: DailyReflectionEntity?,
-    onReflect: () -> Unit,
-) {
-    SectionCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center,
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            val newPausedDate = if (isPausedToday) "" else todayDate
+                            container.settingsRepository.setPausedTodayDate(newPausedDate)
+                        }
+                    },
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Nightlight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(18.dp),
+                    Text(
+                        text = if (isPausedToday) "Resume" else "Pause",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Text(
-                    text = "Evening Reflection",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            if (reflection != null) {
-                PillBadge(
-                    text = "Completed ✓",
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
             }
         }
 
-        if (reflection == null) {
-            Text(
-                text = "Close the loop on today. Take a quick moment to reflect on what went well.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(
-                onClick = onReflect,
+        // 4. Evening Recovery Prompt
+        SectionCard {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Reflect on today →")
-            }
-        } else {
-            Text(
-                text = "Mood: ${reflection.mood} • Follow-through: ${reflection.completion}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (reflection.note.isNotBlank()) {
-                Text(
-                    text = "“${reflection.note}”",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DarkMode,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Evening Recovery",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = if (todayReflection != null) "Reflected: ${todayReflection?.completion}" else "Reflect on how today unfolded",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                TextButton(onClick = onNavigateReflection) {
+                    Text(
+                        text = if (todayReflection != null) "Edit" else "Reflect",
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+    }
+
+    // Move Dialog
+    if (showMoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("Move this intention?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Priorities shift. That's completely normal. You can move this intention to later.")
+                    OutlinedTextField(
+                        value = moveNote,
+                        onValueChange = { moveNote = it },
+                        placeholder = { Text("Optional note (e.g. Moving to tomorrow 10am)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            container.dailyPlanRepository.updateStatus("MOVED")
+                            container.userCorrectionRepository.addCorrection(
+                                category = "INTENTION",
+                                note = "Moved intention: ${todayPlan?.text}. Note: $moveNote",
+                            )
+                            showMoveDialog = false
+                        }
+                    },
+                ) {
+                    Text("Move It")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMoveDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    // Not Today Dialog (Zero Guilt)
+    if (showNotTodayDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotTodayDialog = false },
+            title = { Text("Drop for today?") },
+            text = {
+                Text("Letting go of a plan when life requires your attention elsewhere is a conscious, healthy decision. No guilt.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            container.dailyPlanRepository.updateStatus("DROPPED")
+                            container.userCorrectionRepository.addCorrection(
+                                category = "INTENTION",
+                                note = "Dropped intention for today: ${todayPlan?.text}",
+                            )
+                            showNotTodayDialog = false
+                        }
+                    },
+                ) {
+                    Text("Drop for Today")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotTodayDialog = false }) {
+                    Text("Keep Plan")
+                }
+            },
+        )
     }
 }

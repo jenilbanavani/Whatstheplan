@@ -2,9 +2,8 @@ package com.example.whatstheplan.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,8 +29,7 @@ import com.example.whatstheplan.domain.model.UserSettings
 import com.example.whatstheplan.notifications.CheckInScheduler
 import com.example.whatstheplan.ui.navigation.Routes
 import com.example.whatstheplan.ui.screens.CheckInScreen
-import com.example.whatstheplan.ui.screens.HistoryScreen
-import com.example.whatstheplan.ui.screens.InsightsScreen
+import com.example.whatstheplan.ui.screens.MemoryScreen
 import com.example.whatstheplan.ui.screens.MorningScreen
 import com.example.whatstheplan.ui.screens.PrivacyScreen
 import com.example.whatstheplan.ui.screens.ReflectionScreen
@@ -56,15 +54,16 @@ fun WhatsThePlanApp(
         val context = LocalContext.current
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = backStackEntry?.destination?.route
-        val mainRoutes = setOf(Routes.TODAY, Routes.HISTORY, Routes.INSIGHTS, Routes.SETTINGS)
+        val mainRoutes = setOf(Routes.TODAY, Routes.MEMORY, Routes.SETTINGS)
 
         LaunchedEffect(
             settings.setupComplete,
             settings.checkInsEnabled,
-            settings.checkInIntervalMinutes,
+            settings.morningReminderEnabled,
+            settings.wakeTimeMinutes,
             settings.activeStartMinutes,
             settings.activeEndMinutes,
-            settings.notificationSound,
+            settings.pausedTodayDate,
         ) {
             if (settings.setupComplete) {
                 CheckInScheduler.schedule(context, settings)
@@ -137,13 +136,13 @@ fun WhatsThePlanApp(
                 composable(Routes.SETUP) {
                     SetupScreen(
                         settingsRepository = container.settingsRepository,
-                        usageStatsReader = container.usageStatsReader,
                     )
                 }
                 composable(Routes.MORNING) {
                     MorningScreen(
                         planRepository = container.dailyPlanRepository,
                         funFactRepository = container.funFactRepository,
+                        settingsRepository = container.settingsRepository,
                         onDone = {
                             navController.navigate(Routes.TODAY) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -174,17 +173,12 @@ fun WhatsThePlanApp(
                 }
                 composable(Routes.REFLECTION) {
                     ReflectionScreen(
-                        reflectionRepository = container.dailyReflectionRepository,
+                        container = container,
                         onDone = { navController.navigate(Routes.TODAY) { launchSingleTop = true } },
                     )
                 }
-                composable(Routes.HISTORY) {
-                    HistoryScreen(
-                        container = container,
-                    )
-                }
-                composable(Routes.INSIGHTS) {
-                    InsightsScreen(
+                composable(Routes.MEMORY) {
+                    MemoryScreen(
                         container = container,
                     )
                 }
@@ -192,6 +186,7 @@ fun WhatsThePlanApp(
                     SettingsScreen(
                         container = container,
                         onPrivacy = { navController.navigate(Routes.PRIVACY) },
+                        onNavigateMemory = { navController.navigate(Routes.MEMORY) },
                     )
                 }
                 composable(Routes.PRIVACY) {
@@ -208,9 +203,8 @@ private fun BottomNavigationBar(
     onRouteSelected: (String) -> Unit,
 ) {
     val items = listOf(
-        NavItem(Routes.TODAY, "Home", Icons.Default.Home),
-        NavItem(Routes.HISTORY, "History", Icons.Default.History),
-        NavItem(Routes.INSIGHTS, "Insights", Icons.Default.BarChart),
+        NavItem(Routes.TODAY, "Today", Icons.Default.Home),
+        NavItem(Routes.MEMORY, "Memory", Icons.Default.Memory),
         NavItem(Routes.SETTINGS, "Settings", Icons.Default.Settings),
     )
 
