@@ -73,6 +73,8 @@ import com.example.whatstheplan.domain.model.ThemeMode
 import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
 import com.example.whatstheplan.notifications.NotificationHelper
+import com.example.whatstheplan.ui.components.AtmospherePhase
+import com.example.whatstheplan.ui.components.AtmosphericBackground
 import com.example.whatstheplan.ui.components.CardTitle
 import com.example.whatstheplan.ui.components.PillBadge
 import com.example.whatstheplan.ui.components.SectionCard
@@ -193,24 +195,28 @@ fun SettingsScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            text = "Fine-tune companion tone, rhythm, and notification timing.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    AtmosphericBackground(phase = AtmospherePhase.AUTO) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Spacer(Modifier.height(4.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Fine-tune companion tone, rhythm, and notification timing.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
         // 1. Companion Tone
         SectionCard {
@@ -575,6 +581,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
     }
+}
 
     // Edit Name Dialog
     if (editingName) {

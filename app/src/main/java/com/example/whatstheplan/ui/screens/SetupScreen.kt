@@ -18,11 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,7 +44,9 @@ import androidx.compose.ui.unit.dp
 import com.example.whatstheplan.data.local.repository.SettingsRepository
 import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.notifications.NotificationHelper
-import com.example.whatstheplan.ui.components.PrimaryGlowButton
+import com.example.whatstheplan.ui.components.AtmospherePhase
+import com.example.whatstheplan.ui.components.AtmosphericBackground
+import com.example.whatstheplan.ui.components.PrimaryPillButton
 import com.example.whatstheplan.ui.components.SectionCard
 import com.example.whatstheplan.utils.DateUtils
 import kotlinx.coroutines.launch
@@ -62,7 +62,6 @@ fun SetupScreen(
     var wakeTimeMinutes by remember { mutableIntStateOf(7 * 60 + 30) } // 7:30 AM
     var sleepTimeMinutes by remember { mutableIntStateOf(23 * 60 + 30) } // 11:30 PM
     var fixedCommitment by remember { mutableStateOf("") }
-    var sampleIntention by remember { mutableStateOf("") }
     var selectedTone by remember { mutableStateOf(TonePreference.CALM) }
     var enableNotifications by remember { mutableStateOf(true) }
 
@@ -96,232 +95,232 @@ fun SetupScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Spacer(Modifier.height(8.dp))
-
-        // Title
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = "What's the Plan?",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = "A quiet, local-first phone companion that remembers your rhythm and helps you follow through on one thing.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        // Privacy Guarantee Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+    AtmosphericBackground(phase = AtmospherePhase.MORNING) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp),
-                )
+            Spacer(Modifier.height(8.dp))
+
+            // Title
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "Your routines and plans stay on this phone. No accounts, no cloud sync, no tracking.",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
+                    text = "What's the Plan?",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                Text(
+                    text = "A quiet, local-first day companion that remembers your rhythm and helps you follow through on one thing.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-        }
 
-        // 1. Name
-        SectionCard {
-            Text(
-                text = "What should I call you?",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Your name (optional)") },
-                placeholder = { Text("e.g. Alex") },
-                singleLine = true,
+            // Privacy Guarantee Card
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                ),
-            )
-        }
-
-        // 2. Daily Rhythm (Wake time & Sleep time)
-        SectionCard {
-            Text(
-                text = "Your Daily Rhythm",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
             ) {
-                Column {
-                    Text("Wake time", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(DateUtils.formatClock(wakeTimeMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                }
-                OutlinedButton(onClick = { wakePicker.show() }, shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Text(" Set", modifier = Modifier.padding(start = 4.dp))
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("Sleep time", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(DateUtils.formatClock(sleepTimeMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
-                }
-                OutlinedButton(onClick = { sleepPicker.show() }, shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Bedtime, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Text(" Set", modifier = Modifier.padding(start = 4.dp))
-                }
-            }
-        }
-
-        // 3. One Fixed Daily Commitment
-        SectionCard {
-            Text(
-                text = "One Fixed Daily Commitment",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "A primary daily block so the companion knows when you are busy.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedTextField(
-                value = fixedCommitment,
-                onValueChange = { fixedCommitment = it },
-                label = { Text("e.g. Work 9am–5pm, College 9am–3pm") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                ),
-            )
-        }
-
-        // 4. Preferred Companion Tone
-        SectionCard {
-            Text(
-                text = "Preferred Tone",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            TonePreference.entries.forEach { tone ->
-                val isSelected = selectedTone == tone
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedTone = tone },
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(
-                        if (isSelected) 2.dp else 1.dp,
-                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                    ),
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Text(
+                        text = "Your routines and plans stay on this phone. No accounts, no cloud sync, no tracking.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            // 1. Name
+            SectionCard {
+                Text(
+                    text = "What should I call you?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Your name (optional)") },
+                    placeholder = { Text("e.g. Jenil") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    ),
+                )
+            }
+
+            // 2. Daily Rhythm (Wake time & Sleep time)
+            SectionCard {
+                Text(
+                    text = "Your Daily Rhythm",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("Wake time", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(DateUtils.formatClock(wakeTimeMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                    OutlinedButton(onClick = { wakePicker.show() }, shape = RoundedCornerShape(100.dp)) {
+                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(" Set", modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("Sleep time", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(DateUtils.formatClock(sleepTimeMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+                    }
+                    OutlinedButton(onClick = { sleepPicker.show() }, shape = RoundedCornerShape(100.dp)) {
+                        Icon(Icons.Default.Bedtime, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(" Set", modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
+            }
+
+            // 3. One Fixed Daily Commitment
+            SectionCard {
+                Text(
+                    text = "One Fixed Daily Commitment",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = "A primary daily block so the companion knows when you are busy.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = fixedCommitment,
+                    onValueChange = { fixedCommitment = it },
+                    label = { Text("e.g. College 9am–3pm, Work 9am–5pm") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    ),
+                )
+            }
+
+            // 4. Preferred Companion Tone
+            SectionCard {
+                Text(
+                    text = "Companion Tone",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                TonePreference.entries.forEach { tone ->
+                    val isSelected = selectedTone == tone
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedTone = tone },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            if (isSelected) 2.dp else 1.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        ),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = tone.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = tone.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 5. Notifications
+            SectionCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = tone.title,
+                            text = "Calm Daily Prompts",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium,
                         )
                         Text(
-                            text = tone.description,
+                            text = "Max 1 morning prompt + 1 follow-up. Zero hourly nagging.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
-            }
-        }
-
-        // 5. Notifications (Explaining Value)
-        SectionCard {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Calm Daily Prompts",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "Max 1 morning prompt + 1 follow-up. Zero hourly nagging.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = enableNotifications,
-                    onCheckedChange = { isChecked ->
-                        enableNotifications = isChecked
-                        if (isChecked && !NotificationHelper.canPostNotifications(context)) {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    Switch(
+                        checked = enableNotifications,
+                        onCheckedChange = { isChecked ->
+                            enableNotifications = isChecked
+                            if (isChecked && !NotificationHelper.canPostNotifications(context)) {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             }
-                        }
-                    },
-                )
-            }
-        }
-
-        // Save & Finish Button
-        PrimaryGlowButton(
-            text = "Get Started",
-            icon = Icons.AutoMirrored.Filled.ArrowForward,
-            onClick = {
-                scope.launch {
-                    settingsRepository.setUserName(name)
-                    settingsRepository.setWakeTimeMinutes(wakeTimeMinutes)
-                    settingsRepository.setSleepTimeMinutes(sleepTimeMinutes)
-                    settingsRepository.setDailyCommitment(fixedCommitment)
-                    settingsRepository.setTonePreference(selectedTone)
-                    settingsRepository.setMorningReminderEnabled(enableNotifications)
-                    settingsRepository.setFollowUpEnabled(enableNotifications)
-                    settingsRepository.setEveningReflectionEnabled(enableNotifications)
-                    settingsRepository.setSetupComplete(true)
+                        },
+                    )
                 }
-            },
-        )
+            }
 
-        Spacer(Modifier.height(16.dp))
+            // Finish Button
+            PrimaryPillButton(
+                text = "Get Started",
+                onClick = {
+                    scope.launch {
+                        settingsRepository.setUserName(name)
+                        settingsRepository.setWakeTimeMinutes(wakeTimeMinutes)
+                        settingsRepository.setSleepTimeMinutes(sleepTimeMinutes)
+                        settingsRepository.setDailyCommitment(fixedCommitment)
+                        settingsRepository.setTonePreference(selectedTone)
+                        settingsRepository.setMorningReminderEnabled(enableNotifications)
+                        settingsRepository.setFollowUpEnabled(enableNotifications)
+                        settingsRepository.setEveningReflectionEnabled(enableNotifications)
+                        settingsRepository.setSetupComplete(true)
+                    }
+                },
+            )
+
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }

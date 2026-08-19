@@ -1,10 +1,12 @@
 package com.example.whatstheplan.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,18 +24,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,16 +44,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whatstheplan.data.local.repository.DailyPlanRepository
 import com.example.whatstheplan.data.local.repository.FunFactRepository
 import com.example.whatstheplan.data.local.repository.SettingsRepository
 import com.example.whatstheplan.domain.model.FunFact
 import com.example.whatstheplan.domain.model.UserSettings
+import com.example.whatstheplan.ui.components.AtmospherePhase
+import com.example.whatstheplan.ui.components.AtmosphericBackground
 import com.example.whatstheplan.ui.components.PillBadge
-import com.example.whatstheplan.ui.components.PrimaryGlowButton
+import com.example.whatstheplan.ui.components.PrimaryPillButton
+import com.example.whatstheplan.ui.components.SecondaryPillButton
 import com.example.whatstheplan.ui.components.SectionCard
 import kotlinx.coroutines.launch
 
@@ -71,213 +74,221 @@ fun MorningScreen(
 
     var planText by remember { mutableStateOf("") }
     var firstStep by remember { mutableStateOf("") }
-    var selectedSuggestion by remember { mutableStateOf<String?>(null) }
+    var selectedSuggestion by remember { mutableStateOf<String?>("Study") }
+    var isCustomizing by remember { mutableStateOf(false) }
     var savedFact by remember { mutableStateOf<FunFact?>(null) }
 
     val suggestions = listOf(
-        "Study" to "Open textbook / notes",
-        "Project" to "Write three bullet points",
-        "Exercise" to "Put on shoes & stretch",
-        "Life admin" to "Clear one pending email / task",
-        "Rest" to "Take 10 minutes of quiet screen-free time",
+        "Study" to "Open textbook / notes (Physics Chapter 4)",
+        "Project" to "Write 3 key bullet points",
+        "Exercise" to "Put on workout shoes & stretch",
+        "Life admin" to "Clear 1 pending email",
+        "Rest" to "Take 10 minutes screen-free",
         "Something else" to "Decide the very first 2 minutes",
     )
 
-    val tone = settings.tonePreference
-    val greeting = tone.morningGreeting(settings.userName)
+    val userName = settings.userName.ifBlank { "there" }
+    val headlineGreeting = "Morning, $userName 👋"
 
-    AnimatedContent(
-        targetState = savedFact,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "morning_fact_transition",
-    ) { fact ->
-        if (fact == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                Spacer(Modifier.height(8.dp))
-
-                Box(
+    AtmosphericBackground(phase = AtmospherePhase.MORNING) {
+        AnimatedContent(
+            targetState = savedFact,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "morning_fact_transition",
+        ) { fact ->
+            if (fact == null) {
+                Column(
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.WbSunny,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
+                    Spacer(Modifier.height(16.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Your one thing today",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = greeting,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = "Pick one realistic intention. Low friction > many features.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    // Conversational Content Block (Direct Match to HTML Reference)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = headlineGreeting,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
 
-                // Suggestions Chips
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    suggestions.forEach { (category, defaultStep) ->
-                        val isSelected = selectedSuggestion == category
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                if (isSelected) {
-                                    selectedSuggestion = null
-                                } else {
-                                    selectedSuggestion = category
-                                    if (planText.isBlank() && category != "Something else") {
-                                        planText = category
+                        val activeIntention = planText.ifBlank { selectedSuggestion ?: "studying" }
+                        Text(
+                            text = "You've got 1 key focus planned today. Your biggest priority is $activeIntention.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 26.sp,
+                        )
+
+                        Text(
+                            text = "Want me to build the day around it?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+
+                        // Option to expand intention customization
+                        AnimatedVisibility(visible = isCustomizing) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
+                            ) {
+                                Text(
+                                    text = "Choose your focus:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    suggestions.forEach { (category, defaultStep) ->
+                                        val isSelected = selectedSuggestion == category
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                selectedSuggestion = category
+                                                if (planText.isBlank() && category != "Something else") {
+                                                    planText = category
+                                                }
+                                                if (firstStep.isBlank()) {
+                                                    firstStep = defaultStep
+                                                }
+                                            },
+                                            label = { Text(category, style = MaterialTheme.typography.bodyMedium) },
+                                            shape = RoundedCornerShape(100.dp),
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            ),
+                                        )
                                     }
-                                    if (firstStep.isBlank()) {
-                                        firstStep = defaultStep
+                                }
+
+                                OutlinedTextField(
+                                    value = planText,
+                                    onValueChange = { planText = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Specific intention") },
+                                    placeholder = { Text("e.g. Study Physics Chapter 4") },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    ),
+                                    singleLine = true,
+                                )
+
+                                OutlinedTextField(
+                                    value = firstStep,
+                                    onValueChange = { firstStep = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Smallest start (first 2 min)") },
+                                    placeholder = { Text("e.g. Open textbook and notes") },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    ),
+                                    singleLine = true,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // Action Controls (Pill Action Buttons Zone)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        PrimaryPillButton(
+                            text = "Let's do it",
+                            onClick = {
+                                val text = planText.ifBlank { selectedSuggestion ?: "Study" }
+                                val step = firstStep.ifBlank { "Open textbook / notes" }
+                                scope.launch {
+                                    planRepository.savePlan(text = text, firstStep = step)
+                                    val nextFact = funFactRepository.nextFactOrNull()
+                                    if (nextFact == null) onDone() else savedFact = nextFact
+                                }
+                            },
+                        )
+
+                        SecondaryPillButton(
+                            text = if (isCustomizing) "Nothing ambitious today" else "I'll plan myself",
+                            onClick = {
+                                if (!isCustomizing) {
+                                    isCustomizing = true
+                                } else {
+                                    scope.launch {
+                                        planRepository.savePlan(text = "Nothing ambitious today", skipped = true)
+                                        onDone()
                                     }
                                 }
                             },
-                            label = { Text(category, style = MaterialTheme.typography.bodyMedium) },
-                            shape = RoundedCornerShape(100.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            ),
                         )
                     }
                 }
-
-                // 1. Natural Intention Text Input
-                OutlinedTextField(
-                    value = planText,
-                    onValueChange = { planText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Today's one intention") },
-                    placeholder = { Text("e.g. Finish project outline, read chapter 3") },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    ),
-                    minLines = 2,
-                )
-
-                // 2. Smallest First Step
-                OutlinedTextField(
-                    value = firstStep,
-                    onValueChange = { firstStep = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Smallest start (first 2 minutes)") },
-                    placeholder = { Text("e.g. Write three bullet points") },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    ),
-                    singleLine = true,
-                )
-
-                PrimaryGlowButton(
-                    text = "Set Intention",
-                    icon = Icons.AutoMirrored.Filled.ArrowForward,
-                    enabled = planText.isNotBlank() || selectedSuggestion != null,
-                    onClick = {
-                        val text = planText.ifBlank { selectedSuggestion.orEmpty() }
-                        val step = firstStep.ifBlank { "Take 2 minutes to start" }
-                        scope.launch {
-                            planRepository.savePlan(text = text, firstStep = step)
-                            val nextFact = funFactRepository.nextFactOrNull()
-                            if (nextFact == null) onDone() else savedFact = nextFact
-                        }
-                    },
-                )
-
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            planRepository.savePlan(text = "Nothing ambitious today", skipped = true)
-                            onDone()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
+            } else {
+                // Post-Intention Moment Card
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(28.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("Nothing ambitious today")
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(28.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                SectionCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ) {
-                    Row(
+                    SectionCard(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                        containerColor = MaterialTheme.colorScheme.surface,
                     ) {
-                        PillBadge(
-                            text = "💡 Quick thought",
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            PillBadge(
+                                text = "💡 Quick thought",
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Text(
+                                text = fact.category,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
                         Text(
-                            text = fact.category,
-                            style = MaterialTheme.typography.labelMedium,
+                            text = fact.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 26.sp,
+                        )
+
+                        Text(
+                            text = "Your intention is set. Go make it happen.",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
 
-                    Text(
-                        text = fact.text,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal),
-                        textAlign = TextAlign.Start,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-
-                    Text(
-                        text = "Your intention is set. Go make it happen.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    Button(
-                        onClick = onDone,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    ) {
-                        Text("Open Today's Plan", style = MaterialTheme.typography.titleMedium)
+                        PrimaryPillButton(
+                            text = "Open Today's Plan",
+                            onClick = onDone,
+                        )
                     }
                 }
             }
