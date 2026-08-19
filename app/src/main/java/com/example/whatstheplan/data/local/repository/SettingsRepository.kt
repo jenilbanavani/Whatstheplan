@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.whatstheplan.domain.model.EngagementLevel
 import com.example.whatstheplan.domain.model.ThemeMode
 import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
@@ -147,6 +148,73 @@ class SettingsRepository(private val context: Context) {
         reschedule()
     }
 
+    // State Machine & Signal Evaluator Methods
+    suspend fun setEngagementLevel(level: EngagementLevel) {
+        dataStore.edit { it[Keys.ENGAGEMENT_LEVEL] = level.name }
+    }
+
+    suspend fun recordUnlock(todayDate: String): Int {
+        var newCount = 1
+        dataStore.edit { preferences ->
+            val lastDate = preferences[Keys.LAST_UNLOCK_DATE] ?: ""
+            val currentCount = preferences[Keys.UNLOCK_COUNT_TODAY] ?: 0
+            newCount = if (lastDate == todayDate) currentCount + 1 else 1
+            preferences[Keys.LAST_UNLOCK_DATE] = todayDate
+            preferences[Keys.UNLOCK_COUNT_TODAY] = newCount
+        }
+        return newCount
+    }
+
+    suspend fun resetUnlocks(todayDate: String) {
+        dataStore.edit {
+            it[Keys.LAST_UNLOCK_DATE] = todayDate
+            it[Keys.UNLOCK_COUNT_TODAY] = 0
+        }
+    }
+
+    suspend fun recordInteraction() {
+        val now = System.currentTimeMillis()
+        dataStore.edit {
+            it[Keys.LAST_INTERACTION_TIMESTAMP] = now
+            it[Keys.CONSECUTIVE_DISMISSALS_TODAY] = 0
+        }
+    }
+
+    suspend fun recordNotificationPosted() {
+        val now = System.currentTimeMillis()
+        dataStore.edit {
+            it[Keys.LAST_NOTIFICATION_POSTED_TIMESTAMP] = now
+        }
+    }
+
+    suspend fun recordDismissal(): Int {
+        var dismissals = 1
+        dataStore.edit { preferences ->
+            val current = preferences[Keys.CONSECUTIVE_DISMISSALS_TODAY] ?: 0
+            dismissals = current + 1
+            preferences[Keys.CONSECUTIVE_DISMISSALS_TODAY] = dismissals
+        }
+        return dismissals
+    }
+
+    suspend fun resetDismissals() {
+        dataStore.edit {
+            it[Keys.CONSECUTIVE_DISMISSALS_TODAY] = 0
+        }
+    }
+
+    suspend fun setDormantUntilDate(date: String) {
+        dataStore.edit {
+            it[Keys.DORMANT_UNTIL_DATE] = date
+        }
+    }
+
+    suspend fun setDelayMiddayUntil(millis: Long) {
+        dataStore.edit {
+            it[Keys.DELAY_MIDDAY_UNTIL_MILLIS] = millis
+        }
+    }
+
     suspend fun recentFactIds(): List<Int> = settingsFlow.first().recentFactIds
 
     suspend fun markFactShown(factId: Int) {
@@ -212,6 +280,16 @@ class SettingsRepository(private val context: Context) {
             focusModeUntilMillis = preferences[Keys.FOCUS_MODE_UNTIL_MILLIS] ?: 0L,
             lastMorningReminderDate = preferences[Keys.LAST_MORNING_REMINDER_DATE] ?: "",
             exactAlarmsEnabled = preferences[Keys.EXACT_ALARMS_ENABLED] ?: false,
+            engagementLevel = EngagementLevel.entries.firstOrNull {
+                it.name == preferences[Keys.ENGAGEMENT_LEVEL]
+            } ?: EngagementLevel.LEVEL_0_NORMAL,
+            unlockCountToday = preferences[Keys.UNLOCK_COUNT_TODAY] ?: 0,
+            lastUnlockDate = preferences[Keys.LAST_UNLOCK_DATE] ?: "",
+            lastInteractionTimestamp = preferences[Keys.LAST_INTERACTION_TIMESTAMP] ?: System.currentTimeMillis(),
+            lastNotificationPostedTimestamp = preferences[Keys.LAST_NOTIFICATION_POSTED_TIMESTAMP] ?: 0L,
+            consecutiveDismissalsToday = preferences[Keys.CONSECUTIVE_DISMISSALS_TODAY] ?: 0,
+            dormantUntilDate = preferences[Keys.DORMANT_UNTIL_DATE] ?: "",
+            delayMiddayUntilMillis = preferences[Keys.DELAY_MIDDAY_UNTIL_MILLIS] ?: 0L,
         )
 
     private fun normalizeMinute(minutes: Int): Int =
@@ -243,5 +321,14 @@ class SettingsRepository(private val context: Context) {
         val FOCUS_MODE_UNTIL_MILLIS = longPreferencesKey("focus_mode_until_millis")
         val LAST_MORNING_REMINDER_DATE = stringPreferencesKey("last_morning_reminder_date")
         val EXACT_ALARMS_ENABLED = booleanPreferencesKey("exact_alarms_enabled")
+        // State Machine Keys
+        val ENGAGEMENT_LEVEL = stringPreferencesKey("engagement_level")
+        val UNLOCK_COUNT_TODAY = intPreferencesKey("unlock_count_today")
+        val LAST_UNLOCK_DATE = stringPreferencesKey("last_unlock_date")
+        val LAST_INTERACTION_TIMESTAMP = longPreferencesKey("last_interaction_timestamp")
+        val LAST_NOTIFICATION_POSTED_TIMESTAMP = longPreferencesKey("last_notification_posted_timestamp")
+        val CONSECUTIVE_DISMISSALS_TODAY = intPreferencesKey("consecutive_dismissals_today")
+        val DORMANT_UNTIL_DATE = stringPreferencesKey("dormant_until_date")
+        val DELAY_MIDDAY_UNTIL_MILLIS = longPreferencesKey("delay_midday_until_millis")
     }
 }

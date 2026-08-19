@@ -15,15 +15,15 @@ object CheckInScheduler {
     private const val WORK_NAME_FOLLOW_UP = "daily_follow_up_work"
     private const val WORK_NAME_MORNING = "morning_planning_work"
     private const val WORK_NAME_EVENING = "evening_reflection_work"
+    private const val WORK_NAME_NIGHT_RESET = "night_reset_work"
 
     fun schedule(context: Context, settings: UserSettings) {
         val workManager = WorkManager.getInstance(context.applicationContext)
 
         // 1. Single Daily Follow-Up Work (Midday / Afternoon context check)
-        if (!settings.checkInsEnabled) {
+        if (!settings.followUpEnabled) {
             workManager.cancelUniqueWork(WORK_NAME_FOLLOW_UP)
         } else {
-            // Midday target time: midway between start and end, or default 14:00 (2 PM)
             val middayMinute = if (settings.activeEndMinutes > settings.activeStartMinutes) {
                 (settings.activeStartMinutes + settings.activeEndMinutes) / 2
             } else {
@@ -64,18 +64,37 @@ object CheckInScheduler {
         }
 
         // 3. Evening Recovery Work (Day close)
-        val eveningMinute = settings.activeEndMinutes.coerceAtLeast(18 * 60)
-        val eveningRequest = PeriodicWorkRequestBuilder<EveningReflectionWorker>(
+        if (!settings.eveningReflectionEnabled) {
+            workManager.cancelUniqueWork(WORK_NAME_EVENING)
+        } else {
+            val eveningMinute = settings.activeEndMinutes.coerceAtLeast(18 * 60)
+            val eveningRequest = PeriodicWorkRequestBuilder<EveningReflectionWorker>(
+                24,
+                TimeUnit.HOURS,
+            )
+                .setInitialDelay(dailyDelayMillis(eveningMinute), TimeUnit.MILLISECONDS)
+                .build()
+
+            workManager.enqueueUniquePeriodicWork(
+                WORK_NAME_EVENING,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                eveningRequest,
+            )
+        }
+
+        // 4. Night Reset Work (Midnight reset phase / auto-archive loops)
+        val nightResetMinute = settings.sleepTimeMinutes.coerceIn(0, 23 * 60 + 59)
+        val nightResetRequest = PeriodicWorkRequestBuilder<NightResetWorker>(
             24,
             TimeUnit.HOURS,
         )
-            .setInitialDelay(dailyDelayMillis(eveningMinute), TimeUnit.MILLISECONDS)
+            .setInitialDelay(dailyDelayMillis(nightResetMinute), TimeUnit.MILLISECONDS)
             .build()
 
         workManager.enqueueUniquePeriodicWork(
-            WORK_NAME_EVENING,
+            WORK_NAME_NIGHT_RESET,
             ExistingPeriodicWorkPolicy.UPDATE,
-            eveningRequest,
+            nightResetRequest,
         )
     }
 
@@ -84,6 +103,7 @@ object CheckInScheduler {
         workManager.cancelUniqueWork(WORK_NAME_FOLLOW_UP)
         workManager.cancelUniqueWork(WORK_NAME_MORNING)
         workManager.cancelUniqueWork(WORK_NAME_EVENING)
+        workManager.cancelUniqueWork(WORK_NAME_NIGHT_RESET)
     }
 
     fun dailyDelayMillis(targetMinuteOfDay: Int): Long {

@@ -21,22 +21,36 @@ class CheckInWorker(
             ?: SettingsRepository(applicationContext).settingsFlow.first()
 
         val today = DateUtils.todayString()
+        val now = System.currentTimeMillis()
 
-        // 1. Check if check-ins are enabled or paused for today
-        if (!settings.setupComplete || !settings.checkInsEnabled || settings.pausedTodayDate == today) {
+        // 1. Basic checks
+        if (!settings.setupComplete || !settings.followUpEnabled) {
             return Result.success()
         }
 
-        // 2. Check focus mode & quiet hours
-        if (System.currentTimeMillis() < settings.focusModeUntilMillis || isInQuietHours(settings)) {
+        // 2. Evaluator suppression (Ghosting Level 3, Dormant Level 2, Paused today, Zero-overlap, DND)
+        if (SignalEvaluator.shouldSuppressNotification(applicationContext, settings, today, now)) {
             return Result.success()
         }
 
-        // 3. Check if today's plan is already DONE or DROPPED
+        // 3. Check if delayed by Level 1 (+3.5h delay)
+        if (now < settings.delayMiddayUntilMillis) {
+            return Result.success()
+        }
+
+        // 4. Check focus mode & quiet hours
+        if (now < settings.focusModeUntilMillis || isInQuietHours(settings)) {
+            return Result.success()
+        }
+
+        // 5. Check if today's plan is already DONE or DROPPED
         val todayPlan = container?.dailyPlanRepository?.observeToday()?.first()
         if (todayPlan?.status == "DONE" || todayPlan?.status == "DROPPED") {
             return Result.success()
         }
+
+        // 6. Record notification post & show follow-up
+        container?.settingsRepository?.recordNotificationPosted()
 
         NotificationHelper.showFollowUpNotification(
             context = applicationContext,

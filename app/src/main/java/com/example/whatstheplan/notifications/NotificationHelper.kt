@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
 import com.example.whatstheplan.MainActivity
 import com.example.whatstheplan.R
@@ -23,6 +24,9 @@ object NotificationHelper {
     const val CHECK_IN_NOTIFICATION_ID = 1001
     const val MORNING_NOTIFICATION_ID = 1002
     const val EVENING_NOTIFICATION_ID = 1003
+    const val ACKNOWLEDGEMENT_NOTIFICATION_ID = 1004
+
+    const val KEY_TEXT_REPLY = "key_text_reply"
 
     fun createChannels(context: Context) = createNotificationChannels(context)
 
@@ -35,7 +39,7 @@ object NotificationHelper {
             "Daily Follow-Up",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Context-aware follow-ups with 3 actions: Start 10 min, Move it, Not today"
+            description = "Context-aware follow-ups with actions: Start 10 min, Move it, Not today"
             enableVibration(true)
         }
 
@@ -90,6 +94,7 @@ object NotificationHelper {
     ) {
         if (!canPostNotifications(context)) return
 
+        val now = System.currentTimeMillis()
         val title = tone.followUpTitle()
         val body = tone.followUpBody(intention, firstStep)
 
@@ -101,6 +106,19 @@ object NotificationHelper {
             context,
             CHECK_IN_NOTIFICATION_ID,
             openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        // Dismissal / Swipe Intent
+        val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            action = NotificationDismissReceiver.ACTION_NOTIFICATION_DISMISSED
+            putExtra(NotificationDismissReceiver.EXTRA_POSTED_TIME, now)
+            putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_TYPE, "FOLLOW_UP")
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            3001,
+            dismissIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -137,18 +155,41 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // Inline Reply Action
+        val remoteInput = RemoteInput.Builder(KEY_TEXT_REPLY)
+            .setLabel("Quick reply (e.g. busy, later)")
+            .build()
+
+        val replyIntent = Intent(context, CheckInActionReceiver::class.java).apply {
+            action = CheckInActionReceiver.ACTION_TEXT_REPLY
+        }
+        val replyPendingIntent = PendingIntent.getBroadcast(
+            context,
+            2004,
+            replyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+
+        val replyAction = NotificationCompat.Action.Builder(
+            0,
+            "💬 Reply",
+            replyPendingIntent,
+        ).addRemoteInput(remoteInput).build()
+
         val builder = NotificationCompat.Builder(context, CHECK_IN_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(openAppPendingIntent)
+            .setDeleteIntent(dismissPendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .addAction(0, "⏱️ Start 10 min", start10PendingIntent)
-            .addAction(0, "➡️ Move it", moveItPendingIntent)
+            .addAction(0, "⏱️ Start 10m", start10PendingIntent)
+            .addAction(0, "➡️ Move", moveItPendingIntent)
             .addAction(0, "🛑 Not today", notTodayPendingIntent)
+            .addAction(replyAction)
 
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build())
     }
@@ -161,6 +202,7 @@ object NotificationHelper {
     ) {
         if (!canPostNotifications(context)) return
 
+        val now = System.currentTimeMillis()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_MORNING)
@@ -173,6 +215,18 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            action = NotificationDismissReceiver.ACTION_NOTIFICATION_DISMISSED
+            putExtra(NotificationDismissReceiver.EXTRA_POSTED_TIME, now)
+            putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_TYPE, "MORNING")
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            3002,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val greeting = tone.morningGreeting(userName)
 
         val notification = NotificationCompat.Builder(context, MORNING_CHANNEL_ID)
@@ -181,6 +235,7 @@ object NotificationHelper {
             .setContentText(greeting)
             .setStyle(NotificationCompat.BigTextStyle().bigText(greeting))
             .setContentIntent(pendingIntent)
+            .setDeleteIntent(dismissPendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -197,6 +252,7 @@ object NotificationHelper {
     ) {
         if (!canPostNotifications(context)) return
 
+        val now = System.currentTimeMillis()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_REFLECTION)
@@ -209,6 +265,18 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            action = NotificationDismissReceiver.ACTION_NOTIFICATION_DISMISSED
+            putExtra(NotificationDismissReceiver.EXTRA_POSTED_TIME, now)
+            putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_TYPE, "EVENING")
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            3003,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val prompt = tone.eveningPrompt(intention)
 
         val notification = NotificationCompat.Builder(context, EVENING_CHANNEL_ID)
@@ -217,11 +285,30 @@ object NotificationHelper {
             .setContentText(prompt)
             .setStyle(NotificationCompat.BigTextStyle().bigText(prompt))
             .setContentIntent(pendingIntent)
+            .setDeleteIntent(dismissPendingIntent)
             .setAutoCancel(true)
             .setSilent(!soundEnabled)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
         NotificationManagerCompat.from(context).notify(EVENING_NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Zero-friction acknowledgement when user enters Level 2 Dormant Mode (e.g. terse reply "busy")
+     */
+    fun showDormantAcknowledgementNotification(context: Context) {
+        if (!canPostNotifications(context)) return
+
+        val notification = NotificationCompat.Builder(context, CHECK_IN_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("What's the Plan?")
+            .setContentText("Got it. Talk tomorrow.")
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(ACKNOWLEDGEMENT_NOTIFICATION_ID, notification)
     }
 }

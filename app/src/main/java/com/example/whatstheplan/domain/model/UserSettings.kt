@@ -26,4 +26,13 @@ data class UserSettings(
     val focusModeUntilMillis: Long = 0L,
     val lastMorningReminderDate: String = "",
     val exactAlarmsEnabled: Boolean = false,
+    // Adaptive State Machine Fields (Levels 0 - 3)
+    val engagementLevel: EngagementLevel = EngagementLevel.LEVEL_0_NORMAL,
+    val unlockCountToday: Int = 0,
+    val lastUnlockDate: String = "",
+    val lastInteractionTimestamp: Long = System.currentTimeMillis(),
+    val lastNotificationPostedTimestamp: Long = 0L,
+    val consecutiveDismissalsToday: Int = 0,
+    val dormantUntilDate: String = "",
+    val delayMiddayUntilMillis: Long = 0L,
 )

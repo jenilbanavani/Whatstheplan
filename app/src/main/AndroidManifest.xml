@@ -43,6 +43,15 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.whatstheplan.ACTION_QUICK_CHECK_IN" />
+                <action android:name="com.example.whatstheplan.ACTION_TEXT_REPLY" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".notifications.NotificationDismissReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.whatstheplan.ACTION_NOTIFICATION_DISMISSED" />
             </intent-filter>
         </receiver>
 

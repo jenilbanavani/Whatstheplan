@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whatstheplan.AppContainer
+import com.example.whatstheplan.domain.model.EngagementLevel
 import com.example.whatstheplan.domain.model.TonePreference
 import com.example.whatstheplan.domain.model.UserSettings
 import com.example.whatstheplan.ui.components.PillBadge
@@ -80,11 +82,18 @@ fun TodayScreen(
 
     val todayDate = DateUtils.todayString()
     val isPausedToday = settings.pausedTodayDate == todayDate
+    val isDormantToday = settings.dormantUntilDate == todayDate || settings.engagementLevel == EngagementLevel.LEVEL_2_STRESSED
+    val isGhosting = settings.engagementLevel == EngagementLevel.LEVEL_3_GHOSTING
     val tone = settings.tonePreference
 
     var showMoveDialog by remember { mutableStateOf(false) }
     var moveNote by remember { mutableStateOf("") }
     var showNotTodayDialog by remember { mutableStateOf(false) }
+
+    // Record interaction on app open
+    LaunchedEffect(Unit) {
+        container.settingsRepository.recordInteraction()
+    }
 
     // 10-minute timer ticker
     var remainingSeconds by remember { mutableLongStateOf(0L) }
@@ -147,10 +156,88 @@ fun TodayScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else if (isDormantToday) {
+                PillBadge(
+                    text = "🌙 Dormant Mode",
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
             }
         }
 
-        // 2. Today's Main Intention Card
+        // 2. Fresh Slate Re-engagement Banner (Level 3 Ghosting Re-engagement)
+        if (isGhosting) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Fresh Slate",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "Welcome back! No guilt, no backlog. Clean slate for today.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setEngagementLevel(EngagementLevel.LEVEL_0_NORMAL)
+                                container.settingsRepository.recordInteraction()
+                            }
+                        },
+                    ) {
+                        Text("Ready", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // 3. Dormant Mode Active Info (Level 2 Stressed)
+        if (isDormantToday && !isPausedToday) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = "Dormant mode active. Prompts are muted for the rest of today to give you space.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // 4. Today's Main Intention Card (Hero Element)
         if (todayPlan == null || (todayPlan?.text.isNullOrBlank() && todayPlan?.skipped == false)) {
             // Empty State: Prompt to pick intention
             Surface(
@@ -213,6 +300,7 @@ fun TodayScreen(
                 "IN_PROGRESS" -> Color(0xFF6EE7B7) // Mint green
                 "MOVED" -> Color(0xFF7FA7FF) // Soft sky
                 "DROPPED" -> MaterialTheme.colorScheme.onSurfaceVariant
+                "ARCHIVED" -> MaterialTheme.colorScheme.outlineVariant
                 else -> MaterialTheme.colorScheme.primary
             }
 
@@ -249,6 +337,7 @@ fun TodayScreen(
                                 "IN_PROGRESS" -> "⏱️ 10 min burst"
                                 "MOVED" -> "➡️ Moved"
                                 "DROPPED" -> "🛑 Not today"
+                                "ARCHIVED" -> "📁 Reset"
                                 else -> "Active"
                             },
                             containerColor = statusColor.copy(alpha = 0.2f),
@@ -363,6 +452,8 @@ fun TodayScreen(
                                 onClick = {
                                     scope.launch {
                                         container.dailyPlanRepository.updateStatus("DONE")
+                                        container.settingsRepository.setEngagementLevel(EngagementLevel.LEVEL_0_NORMAL)
+                                        container.settingsRepository.recordInteraction()
                                         container.userCorrectionRepository.addCorrection(
                                             category = "INTENTION",
                                             note = "Finished intention: ${plan.text}",
@@ -385,6 +476,8 @@ fun TodayScreen(
                                 onClick = {
                                     scope.launch {
                                         container.dailyPlanRepository.startTimer()
+                                        container.settingsRepository.setEngagementLevel(EngagementLevel.LEVEL_0_NORMAL)
+                                        container.settingsRepository.recordInteraction()
                                         container.userCorrectionRepository.addCorrection(
                                             category = "INTENTION",
                                             note = "Started 10 min on: ${plan.text}",
@@ -434,7 +527,7 @@ fun TodayScreen(
             }
         }
 
-        // 3. Pause Notifications Today Control
+        // 5. Pause Notifications Today Control
         SectionCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -479,6 +572,7 @@ fun TodayScreen(
                         scope.launch {
                             val newPausedDate = if (isPausedToday) "" else todayDate
                             container.settingsRepository.setPausedTodayDate(newPausedDate)
+                            container.settingsRepository.recordInteraction()
                         }
                     },
                 ) {
@@ -491,7 +585,7 @@ fun TodayScreen(
             }
         }
 
-        // 4. Evening Reflection Card
+        // 6. Evening Reflection Card
         SectionCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -565,6 +659,8 @@ fun TodayScreen(
                     onClick = {
                         scope.launch {
                             container.dailyPlanRepository.updateStatus("MOVED")
+                            container.settingsRepository.setEngagementLevel(EngagementLevel.LEVEL_0_NORMAL)
+                            container.settingsRepository.recordInteraction()
                             container.userCorrectionRepository.addCorrection(
                                 category = "INTENTION",
                                 note = "Moved intention: ${todayPlan?.text}. Note: $moveNote",
@@ -598,6 +694,8 @@ fun TodayScreen(
                     onClick = {
                         scope.launch {
                             container.dailyPlanRepository.updateStatus("DROPPED")
+                            container.settingsRepository.setEngagementLevel(EngagementLevel.LEVEL_0_NORMAL)
+                            container.settingsRepository.recordInteraction()
                             container.userCorrectionRepository.addCorrection(
                                 category = "INTENTION",
                                 note = "Dropped intention for today: ${todayPlan?.text}",
